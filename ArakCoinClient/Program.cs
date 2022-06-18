@@ -6,8 +6,8 @@ namespace ArakCoinClient
 	{
 		static void Main(string[] args)
 		{
-			var p = new ArakCoin.g();
-			Console.WriteLine($"Hello From ArakCoinClient! Communicating with: {p.a}");
+			Console.WriteLine("Hello World! Client");
+		
 			
 		}
 	}

@@ -1,4 +1,5 @@
-﻿using System;
+﻿global using System;
+global using System.Security.Cryptography;
 
 namespace ArakCoin
 {
@@ -6,13 +7,18 @@ namespace ArakCoin
 	{
 		static void Main(string[] args)
 		{
-			Console.WriteLine("Hello World! Main");
-			
-		}
-	}
+			// Console.WriteLine($"{}");
+			Block b = Utilities.createGenesisBlock();
+			Console.WriteLine(b.calculateBlockHash());
+			Console.WriteLine(b.timestamp);
 
-	public class g
-	{
-		public string a = "ArakCoin";
+			
+
+		}
+
+		
 	}
+	
+	
+
 }
