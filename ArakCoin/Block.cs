@@ -7,10 +7,10 @@ public class Block
 {
 	public readonly int index;
 	public string data; //temp, replace with custom type later for the data portion
-	public int timestamp;
+	public long timestamp;
 	public string prevBlockHash;
 	public int difficulty;
-	public int nonce;
+	public long nonce;
 
 	public Block(int index, string data, int timestamp, string prevBlockHash, int difficulty, int nonce)
 	{

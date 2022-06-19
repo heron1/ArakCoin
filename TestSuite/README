@@ -1,5 +1,6 @@
 ﻿Automated:
-    - UnitTests and IntegrationTests can be completed quickly to test basic functionality of units are working
+    - UnitTests can be completed quickly to test basic functionality of units are working
+    - IntegrationTests can be completed quickly to test multiple component interaction
     - FunctionalTests will test functional requirements, but may take longer to complete
     
 Non-Automated:

@@ -86,7 +86,7 @@ public class Tests
 	{
 		Assert.IsTrue(bchain.getLength() == 0);
 		
-		bchain.addValidBlock(Utilities.createGenesisBlock());
+		bchain.addValidBlock(Blockchain.createGenesisBlock());
 		Assert.IsTrue(bchain.getLength() == 1);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 
@@ -110,7 +110,7 @@ public class Tests
 		//TODO keep adding more invalid tests until final block structure determined. This includes testing data element
 		Assert.IsTrue(bchain.getLength() == 0);
 		
-		bchain.addValidBlock(Utilities.createGenesisBlock());
+		bchain.addValidBlock(Blockchain.createGenesisBlock());
 		Assert.IsTrue(bchain.getLength() == 1);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 
@@ -195,10 +195,10 @@ public class Tests
 
 		// below actions should fail - an invalid genesis block cannot be added
 		Block genesisSpoof = Factory.createEmptyBlock(bchain);
-		Assert.IsTrue(Utilities.isGenesisBlock(genesisSpoof));
+		Assert.IsTrue(Blockchain.isGenesisBlock(genesisSpoof));
 		
 		genesisSpoof.nonce = 2;
-		Assert.IsFalse(Utilities.isGenesisBlock(genesisSpoof));
+		Assert.IsFalse(Blockchain.isGenesisBlock(genesisSpoof));
 		bchain.addValidBlock(genesisSpoof);
 		Assert.IsTrue(bchain.getLength() == 0);
 
@@ -224,7 +224,7 @@ public class Tests
 	{
 		Assert.IsTrue(bchain.getLength() == 0);
 		
-		bchain.addValidBlock(Utilities.createGenesisBlock());
+		bchain.addValidBlock(Blockchain.createGenesisBlock());
 		Assert.IsTrue(bchain.getLength() == 1);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 

@@ -28,7 +28,7 @@ public class BlockchainFunctionalTests
 		{
 			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
 			Debug.WriteLine($"Tstamp diff: " +
-			                $"{Utilities.getTimestampDifferenceToPredecessorBlock(bchain.getLastBlock(), bchain)}, " +
+			                $"{Blockchain.getTimestampDifferenceToPredecessorBlock(bchain.getLastBlock(), bchain)}, " +
 			                $"Block: {bchain.getLength()}, Difficulty: {bchain.currentDifficulty}");
 		}
 

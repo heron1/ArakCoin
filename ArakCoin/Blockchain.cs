@@ -107,7 +107,7 @@ public class Blockchain
 				return;
 			}
 
-			int actualTimeTakenForDifficultyInterval = lastBlock.timestamp - lastDifficultyUpdateBlock.timestamp;
+			long actualTimeTakenForDifficultyInterval = lastBlock.timestamp - lastDifficultyUpdateBlock.timestamp;
 			//set time taken to be at least 1 second if it's less
 			actualTimeTakenForDifficultyInterval = Math.Max(1, actualTimeTakenForDifficultyInterval);
 			
@@ -211,7 +211,7 @@ public class Blockchain
 		if (blockchain.Count() == 0)
 		{
 			// expand this with additional tests if the block object has future parameters added
-			if (!Utilities.isGenesisBlock(block))
+			if (!isGenesisBlock(block))
 				return false;
 	
 			return true;
@@ -272,7 +272,59 @@ public class Blockchain
 		return isBlockchainValid(this);
 	}
 
+	/**
+	 * There can only be one genesis block which is fixed. This function will generate it.
+	 */
+	public static Block createGenesisBlock()
+	{
+		Block genesisBlock = new Block(1, "", Utilities.getTimestamp(), "0", 0, 1);
+		return genesisBlock;
+	}
+
+	/**
+	 * Returns whether the input block is the genesis block or not. The genesis block can only vary in its timestamp
+	 */
+	public static bool isGenesisBlock(Block block)
+	{
+		// TODO validate block data for the genesis block. Ensure it has exact expected value
+		if (block.index == 1 && block.data == "" && block.prevBlockHash == "0" && block.difficulty == 0 && block.nonce == 1)
+			return true;
+
+		return false;
+	}
 	
+	#region Blockchain Helper Methods
+	/**
+	 * Given the input block and blockchain, calculate the timestamp difference between that block and its predecessor.
+	 * Note that due to timestamping variation allowances in terms of block acceptance, it could be possible a negative
+	 * value is returned if the previous block has a later timestamp than its successor.
+	 * 
+	 * Returns 0 for the genesis block or a blockchain with <= 1 element, returns null if the block cannot be found
+	 */
+	public static long? getTimestampDifferenceToPredecessorBlock(Block block, Blockchain bchain)
+	{
+		if (bchain.getLength() <= 1 || Blockchain.isGenesisBlock(block))
+			return 0;
+
+		Block? previousBlock = bchain.getBlockByIndex(block.index - 1);
+		if (previousBlock is null)
+			return null;
+
+		return block.timestamp - previousBlock.timestamp;
+	}
+
+	/**
+	 * Given the input block, calculate the timestamp difference between that block and its predecessor in this blockchain.
+	 * Note that due to timestamping variation allowances in terms of block acceptance, it could be possible a negative
+	 * value is returned if the previous block has a later timestamp than its successor.
+	 * 
+	 * Returns 0 for the genesis block or a blockchain with <= 1 element, returns null if the block cannot be found
+	 */
+	public long? getTimestampDifferenceToPredecessorBlock(Block block)
+	{
+		return getTimestampDifferenceToPredecessorBlock(block, this);
+	}
 	
+	#endregion
 
 }

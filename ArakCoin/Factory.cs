@@ -9,7 +9,7 @@ public static class Factory
 	public static Block createEmptyBlock(Blockchain blockchain)
 	{
 		if (blockchain.getLength() == 0)
-			return Utilities.createGenesisBlock();
+			return Blockchain.createGenesisBlock();
 		
 		return new Block(blockchain.getLength() + 1, "", Utilities.getTimestamp(),
 			blockchain.getLastBlock().calculateBlockHash(), blockchain.currentDifficulty, 1);
@@ -23,7 +23,7 @@ public static class Factory
 	{
 		Block block = createEmptyBlock(blockchain);
 		
-		if (!Utilities.isGenesisBlock(block))
+		if (!Blockchain.isGenesisBlock(block))
 			block.mineBlock();
 
 		return block;
