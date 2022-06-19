@@ -7,11 +7,6 @@ namespace ArakCoin
 	{
 		static void Main(string[] args)
 		{
-			// Console.WriteLine($"{}");
-			Block b = Utilities.createGenesisBlock();
-			Console.WriteLine(b.calculateBlockHash());
-			Console.WriteLine(b.timestamp);
-
 			
 
 		}

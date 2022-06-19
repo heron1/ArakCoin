@@ -1,5 +1,7 @@
-namespace TestSuite;
+using System.Diagnostics;
 using ArakCoin;
+
+namespace TestSuite.UnitTests;
 
 [TestFixture]
 public class Tests
@@ -9,9 +11,14 @@ public class Tests
 	[SetUp]
 	public void Setup()
 	{
+		// initialize fixed low values for blockchain protocol so unit tests don't take long
+		Settings.BLOCK_INTERVAL_SECONDS = 10;
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 20;
+		Settings.DIFFICULTY_BASE = 10;
+		Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE = 2;
+		Settings.INITIALIZED_DIFFICULTY = 1;
+
 		bchain = new Blockchain();
-		bchain.currentDifficulty = 2;
-		//todo unit test for isBlockValid - attempt to append invalid blocks, assert they fail, and only successful ones pass
 	}
 
 	[Test]
@@ -69,7 +76,7 @@ public class Tests
 		// blocks should still have different references
 		Assert.IsFalse(ReferenceEquals(b1, b2));
 		
-		// buy should now be equal again
+		// but should now be equal again
 		Assert.IsTrue(b1 == b2);
 		Assert.IsTrue(b1.Equals(b2));
 	}
@@ -100,6 +107,7 @@ public class Tests
 	[Test]
 	public void TestInvalidBlocksRejected()
 	{
+		//TODO keep adding more invalid tests until final block structure determined. This includes testing data element
 		Assert.IsTrue(bchain.getLength() == 0);
 		
 		bchain.addValidBlock(Utilities.createGenesisBlock());
@@ -211,17 +219,38 @@ public class Tests
 		Assert.IsTrue(bchain.getLastBlock() == genesisSpoof);
 	}
 
+	[Test]
+	public void TestInvalidBlockchainDetected()
+	{
+		Assert.IsTrue(bchain.getLength() == 0);
+		
+		bchain.addValidBlock(Utilities.createGenesisBlock());
+		Assert.IsTrue(bchain.getLength() == 1);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+
+		Block nextBlock = Factory.createAndMineEmptyBlock(bchain);
+		bchain.addValidBlock(nextBlock);
+		Assert.IsTrue(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		
+		nextBlock = Factory.createAndMineEmptyBlock(bchain);
+		bchain.addValidBlock(nextBlock);
+		Assert.IsTrue(bchain.getLength() == 3);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		
+		// blockchain is valid up until this point, but now we will change the nonce in block 2, making it invalid
+		bchain.getBlockByIndex(2).nonce++;
+		
+		Assert.IsFalse(bchain.isBlockchainValid());
+	}
+
 	/**
 	 * Access point for testing arbitrary things in the project
 	 */
 	[Test]
 	public void Temp()
 	{
-		Block b = Factory.createAndMineEmptyBlock(bchain);
-		b.difficulty = 3;
-		b.data = "hello";
-		b.mineBlock();
-		int a = 3;
+		
 	}
 
 }

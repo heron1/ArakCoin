@@ -1,0 +1,8 @@
+﻿Automated:
+    - UnitTests and IntegrationTests can be completed quickly to test basic functionality of units are working
+    - FunctionalTests will test functional requirements, but may take longer to complete
+    
+Non-Automated:
+    - ManualTests will allow manual testing of the functional requirements of the project, but either requires manual
+        intervention as part of the test, or continues forever thus requiring manual termination after the test has
+        been observed to be satisfactory
