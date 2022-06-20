@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Numerics;
 using System.Text;
 
 namespace ArakCoin;
@@ -27,6 +28,19 @@ public class Utilities
 	{
 		return (int)DateTime.UtcNow.Subtract(DateTime.UnixEpoch).TotalSeconds;
 	}
+
+	/**
+	 * Given an input difficulty, which represents the leading number of 0s to find in a SHA256 hash, convert this to
+	 * the estimated number of hashes that need to be tried to reach said difficulty on average
+	 */
+	public static BigInteger convertDifficultyToHashAttempts(int difficulty)
+	{
+		if (difficulty == 0)
+			return 0;
+		
+		return BigInteger.Pow(2, 4 * difficulty);
+	}
+	
 
 	/**
 	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere. This

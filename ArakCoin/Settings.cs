@@ -14,11 +14,14 @@ public static class Settings
 	// actual blocks to wait before next difficulty adjustment check takes place
 	public static int DIFFICULTY_INTERVAL_BLOCKS = 20;
 	
+	// how large the variance in actual difficulty can be before a difficulty adjustment is required
+	public static int DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE = 2;
+	
+	// how large the variance in UTC timestamps between different nodes can be (in seconds)
+	public static int DIFFERING_TIME_ALLOWANCE = 120;
+	
 	// Estimate the value of work required for one higher difficulty as this number being raised to one higher power
 	public static int DIFFICULTY_BASE = 10;
-
-	// how large the threshold can be before a difficulty adjustment is required
-	public static int DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE = 2;
 
 	// starting difficulty of the blockchain
 	public static int INITIALIZED_DIFFICULTY = 1;

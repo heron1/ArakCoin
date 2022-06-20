@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace ArakCoin;
 
@@ -69,7 +70,7 @@ public class Blockchain
 
 	/**
 	 * Checks whether the most recent block in this blockchain will trigger a difficulty update, based upon the
-	 * DIFFICULTY_INTERVAL_BLOCKS variables in Settings.cs - if so it will calculate and update this blockchain
+	 * DIFFICULTY_INTERVAL_BLOCKS variable in Settings - if so it will calculate and update this blockchain
 	 * to a new difficulty if applicable
 	 */
 	public void updateDifficulty()
@@ -173,6 +174,14 @@ public class Blockchain
 	}
 
 	/**
+	 * Returns the first block of this blockchain in O(1) time. If the chain is empty, return null
+	 */
+	public Block? getFirstBlock()
+	{
+		return blockchain.First?.Value;
+	}
+	
+	/**
 	 * Returns the last block of this blockchain in O(1) time. If the chain is empty, returns null
 	 */
 	public Block? getLastBlock()
@@ -182,8 +191,8 @@ public class Blockchain
 
 	/**
 	 * Checks whether the data portion of the block is valid with respect to its previous block. Here we run two tests:
-	 * 1) Test the format of the data portion of the block is valid given the general protocol of the blockchain
-	 * 2) Test the data contains only legal transactions within the context of its previous block
+	 * 1) Test the format of the data portion of the block is legal given the general protocol of the blockchain
+	 * 2) Test the data contains only valid transactions within the context of its previous block
 	 */
 	public static bool validateBlockData(Block block, Block previousBlock)
 	{
@@ -197,24 +206,21 @@ public class Blockchain
 	 */
 	public bool isNewBlockValid(Block block)
 	{
-		// Ensure this block has the corresponding index of the length of the chain + 1
-		if (block.index != blockchain.Count() + 1)
-			return false; 
-		
 		// *Tests that apply to both genesis and ordinary blocks*
 		if (block.timestamp <= 0)
 		{
 			return false;
 		}
+		if (block.index != blockchain.Count() + 1)
+			return false; 
 	
 		// *Tests that apply only to the genesis block*
 		if (blockchain.Count() == 0)
 		{
-			// expand this with additional tests if the block object has future parameters added
 			if (!isGenesisBlock(block))
 				return false;
 	
-			return true;
+			return true; // if blockchain has 0 length and this block is a valid genesis block, it's valid
 		}
 		
 		// *Tests that apply only to non-genesis blocks*
@@ -229,10 +235,39 @@ public class Blockchain
 			return false;
 		if (!validateBlockData(block, lastBlock))
 			return false;
+		if (!isNewBlockTimestampValid(block))
+			return false;
 		
 		return true;
 	}
 
+	/**
+	 * We check whether the timestamp of the input block is valid with respect to whether or not it can be appended as the
+	 * new block to this blockchain, based upon this hosts own local time. If it is, we return true, otherwise false.
+	 * Note that if the blockchain is empty, this always returns true, provided the timestamp is legal
+	 * 
+	 * Note the DIFFERING_TIME_ALLOWANCE variable in Settings determines how much leeway (in seconds) is allowed
+	 */
+	public bool isNewBlockTimestampValid(Block block)
+	{
+		if (block.timestamp <= 0)
+			return false; // illegal timestamp
+		
+		Block? lastBlock = getLastBlock();
+		if (lastBlock is null)
+			return true;
+		
+		// ensure new block is not too far into the past with respect to the last block
+		if (lastBlock.timestamp - Settings.DIFFERING_TIME_ALLOWANCE > block.timestamp)
+			return false;
+		
+		// ensure new block is not too far into the future from this hosts own local time
+		if (block.timestamp - Settings.DIFFERING_TIME_ALLOWANCE > Utilities.getTimestamp())
+			return false;
+
+		return true; 
+	}
+	
 	/**
 	 * Tests whether the given blockchain is valid
 	 */
@@ -273,6 +308,32 @@ public class Blockchain
 	}
 
 	/**
+	 * Returns the accumulative difficulty of a chain, in terms of an estimate of the number of hash attempts required
+	 * to mine all its blocks
+	 */
+	public static BigInteger calculateAccumulativeChainDifficulty(Blockchain chain)
+	{
+		BigInteger accumulatedDifficulty = 0;
+		LinkedListNode<Block>? blockNode = chain.blockchain.First;
+		
+		while (blockNode is not null)
+		{
+			accumulatedDifficulty += Utilities.convertDifficultyToHashAttempts(blockNode.Value.difficulty);
+			blockNode = blockNode.Next;
+		}
+
+		return accumulatedDifficulty;
+	}
+
+	/**
+	 * Returns the accumulative difficulty of this chain
+	 */
+	public BigInteger calculateAccumulativeChainDifficulty()
+	{
+		return calculateAccumulativeChainDifficulty(this);
+	}
+
+	/**
 	 * There can only be one genesis block which is fixed. This function will generate it.
 	 */
 	public static Block createGenesisBlock()
@@ -292,6 +353,32 @@ public class Blockchain
 
 		return false;
 	}
+
+	/**
+	 * Given a list of blockchains, return the valid blockchain with the greatest accumulative hashpower in its mined blocks
+	 * Will return null if there is no valid blockchain
+	 */
+	public static Blockchain? establishWinningChain(List<Blockchain> blockchains)
+	{
+		//TODO this. Note in addition to testing accumulative difficulty, we must also assert the chain is valid. Do tests
+		Blockchain? winningChain = null;
+		Blockchain chain;
+		for (int i = 0; i < blockchains.Count; i++)
+		{
+			chain = blockchains[i];
+			if (winningChain == null)
+			{
+				// we only need to assert this chain is valid to make it the new winning chain, since current winner is null
+				if (chain.isBlockchainValid())
+					winningChain = chain;
+			}
+			else
+			{
+				
+			}
+		}
+		return null;
+	}
 	
 	#region Blockchain Helper Methods
 	/**
@@ -303,7 +390,7 @@ public class Blockchain
 	 */
 	public static long? getTimestampDifferenceToPredecessorBlock(Block block, Blockchain bchain)
 	{
-		if (bchain.getLength() <= 1 || Blockchain.isGenesisBlock(block))
+		if (bchain.getLength() <= 1 || isGenesisBlock(block))
 			return 0;
 
 		Block? previousBlock = bchain.getBlockByIndex(block.index - 1);

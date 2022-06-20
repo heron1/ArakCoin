@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using ArakCoin;
 
 namespace TestSuite.UnitTests;
@@ -11,13 +12,6 @@ public class Tests
 	[SetUp]
 	public void Setup()
 	{
-		// initialize fixed low values for blockchain protocol so unit tests don't take long
-		Settings.BLOCK_INTERVAL_SECONDS = 10;
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 20;
-		Settings.DIFFICULTY_BASE = 10;
-		Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE = 2;
-		Settings.INITIALIZED_DIFFICULTY = 1;
-
 		bchain = new Blockchain();
 	}
 
@@ -86,19 +80,65 @@ public class Tests
 	{
 		Assert.IsTrue(bchain.getLength() == 0);
 		
+		// genesis block
 		bchain.addValidBlock(Blockchain.createGenesisBlock());
 		Assert.IsTrue(bchain.getLength() == 1);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 
+		// normal block 1
 		Block nextBlock = Factory.createAndMineEmptyBlock(bchain);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 2);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		
+		// normal block 2
 		nextBlock = Factory.createAndMineEmptyBlock(bchain);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		
+		// normal block but with a timestamp in the future equal to half of the time variance allowance
+		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE / 2;
+		while (!nextBlock.hashDifficultyMatch())
+			nextBlock.nonce++;
+		bchain.addValidBlock(nextBlock);
+		Assert.IsTrue(bchain.getLength() == 4);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		
+		// normal block but with a timestamp in the past equal to half of the time variance allowance
+		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE / 2;
+		while (!nextBlock.hashDifficultyMatch())
+			nextBlock.nonce++;
+		bchain.addValidBlock(nextBlock);
+		Assert.IsTrue(bchain.getLength() == 5);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		
+		// create a new blockchain with an old head block, and test that it allows a much newer new block timestamp,
+		// but not a much older one than the head block
+		Blockchain oldChain = new Blockchain();
+		Block oldBlockNext = Factory.createEmptyBlock(oldChain);
+		oldBlockNext.timestamp = 10000; // a very old timestamp
+		while (!oldBlockNext.hashDifficultyMatch())
+			oldBlockNext.nonce++;
+		oldChain.addValidBlock(oldBlockNext); // old genesis block should be accepted
+		Assert.IsTrue(oldChain.getLength() == 1);
+
+		oldBlockNext = Factory.createEmptyBlock(oldChain);
+		oldBlockNext.timestamp = Utilities.getTimestamp(); // our current timestamp is much later than the last block
+		while (!oldBlockNext.hashDifficultyMatch())
+			oldBlockNext.nonce++;
+		oldChain.addValidBlock(oldBlockNext); // much newer block should be accepted
+		Assert.IsTrue(oldChain.getLength() == 2);
+		
+		oldBlockNext = Factory.createEmptyBlock(oldChain);
+		oldBlockNext.timestamp = 10; // a much older timestamp than the last block
+		while (!oldBlockNext.hashDifficultyMatch())
+			oldBlockNext.nonce++;
+		oldChain.addValidBlock(oldBlockNext); // much older block should be rejected
+		Assert.IsFalse(oldChain.getLength() == 3);
+		Assert.IsTrue(oldChain.isBlockchainValid()); // our oldChain should still be valid
 		
 		Assert.IsTrue(bchain.isBlockchainValid());
 	}
@@ -135,9 +175,29 @@ public class Tests
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
-		// test invalid timestamp (note we must do a manual mine to ensure timestamp doesn't change)
+		// test illegal timestamp value (note we must do a manual mine to ensure timestamp doesn't change)
 		nextBlock = Factory.createEmptyBlock(bchain);
 		nextBlock.timestamp = -1;
+		while (!nextBlock.hashDifficultyMatch())
+			nextBlock.nonce++;
+		bchain.addValidBlock(nextBlock);
+		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
+		
+		// test block with legal timestamp but which is invalid within the context of our test blockchain (over)
+		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE * 2;
+		while (!nextBlock.hashDifficultyMatch())
+			nextBlock.nonce++;
+		bchain.addValidBlock(nextBlock);
+		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
+		
+		// test block with legal timestamp but which is invalid within the context of our test blockchain (under)
+		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE * 2;
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
 		bchain.addValidBlock(nextBlock);
@@ -244,13 +304,73 @@ public class Tests
 		Assert.IsFalse(bchain.isBlockchainValid());
 	}
 
+	[Test]
+	public void TestBlockchainAccumulativeDifficulty()
+	{
+		BigInteger accumDifficulty;
+		
+		// put blockchain protocol settings to low values for this test so it doesn't take too long
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Settings.BLOCK_INTERVAL_SECONDS = 2;
+		Settings.INITIALIZED_DIFFICULTY = 2;
+		bchain = new Blockchain(); // re-initialize with these settings
+		
+		// first assert the convertDifficultyToHashAttempts function is working correctly
+		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(0) == 0);
+		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(1) == BigInteger.Pow(2, 4 * 1));
+		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(17) == BigInteger.Pow(2, 4 * 17));
+		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(1000) == BigInteger.Pow(2, 4 * 1000));
+		
+		// We now test the calculateAccumulativeChainDifficulty function
+		// genesis block alone has 0 accumulative difficulty
+		bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == 0); 
+
+		// adding 1 block should give the chain an accumulative difficulty equal to the initialized difficulty
+		bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY);
+		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == accumDifficulty);
+		Assert.IsTrue(bchain.getLength() == 2);
+		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
+		                $"current chain difficulty {bchain.currentDifficulty} asserted");
+
+		while (bchain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
+		{
+			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+		}
+		// accumulative difficulty should be equal to the hash difficulty of chain length minus 1 before the first
+		// update difficulty event (due to ignoring genesis block)
+		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY)
+		                  * (bchain.getLength() - 1);
+		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == accumDifficulty);
+		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
+		                $"current chain difficulty {bchain.currentDifficulty} asserted");
+
+		while (bchain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS * 2)
+		{
+			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+		}
+		// fully test accumulative difficulty behaves as expected after difficulty adjustment
+		int lastMinedDifficulty = 
+			bchain.getBlockByIndex(bchain.getLength() - 1).difficulty; // difficulty prior to 2nd difficulty adjustment
+		BigInteger firstIntervalAccumulativeDifficulty =
+			Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY) 
+			* (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1); // - 1 to subtract genesis block from this interval
+		BigInteger secondIntervalAccumulativeDifficulty = 
+			Utilities.convertDifficultyToHashAttempts(lastMinedDifficulty) * Settings.DIFFICULTY_INTERVAL_BLOCKS;
+		accumDifficulty = firstIntervalAccumulativeDifficulty;
+		accumDifficulty += secondIntervalAccumulativeDifficulty;
+		Assert.IsTrue(accumDifficulty == bchain.calculateAccumulativeChainDifficulty());
+		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
+		                $"current chain difficulty {bchain.currentDifficulty} asserted");
+	}
+
 	/**
 	 * Access point for testing arbitrary things in the project
 	 */
 	[Test]
 	public void Temp()
 	{
-		
 	}
 
 }
