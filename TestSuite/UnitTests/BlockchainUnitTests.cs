@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using System.Text;
 using ArakCoin;
 
 namespace TestSuite.UnitTests;
@@ -453,6 +454,8 @@ public class Tests
 	[Test]
 	public void Temp()
 	{
+		
+		
 	}
 
 }

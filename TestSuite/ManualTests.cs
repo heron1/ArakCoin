@@ -29,8 +29,8 @@ public class ManualTests
 		{
 			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
 			Debug.WriteLine($"Tstamp diff: " +
-			                $"{Blockchain.getTimestampDifferenceToPredecessorBlock(bchain.getLastBlock(), bchain)}, " +
-			                $"Block: {bchain.getLength()}, Difficulty: {bchain.currentDifficulty}");
+			                     $"{Blockchain.getTimestampDifferenceToPredecessorBlock(bchain.getLastBlock(), bchain)}, " +
+			                     $"Block: {bchain.getLength()}, Difficulty: {bchain.currentDifficulty}");
 		}
 	}
 }

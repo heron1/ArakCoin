@@ -12,15 +12,9 @@ public class Utilities
 	public static string calculateSHA256Hash(string input)
 	{
 		byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-		var hashBuilder = new StringBuilder();
-		foreach (byte b in hashBytes)
-		{
-			hashBuilder.Append(b.ToString("x2"));
-		}
-
-		return hashBuilder.ToString();
+		return Convert.ToHexString(hashBytes).ToLower();
 	}
-
+	
 	/**
 	 * Returns the current UTC time since epoch (in seconds)
 	 */

@@ -39,6 +39,7 @@ public class Blockchain
 	public void replaceBlockchain(Blockchain newChain)
 	{
 		this.blockchain = newChain.blockchain;
+		this.currentDifficulty = newChain.currentDifficulty;
 	}
 	
 	/**
@@ -154,11 +155,25 @@ public class Blockchain
 	}
 	
 	/**
-	 * Mines the next block in this blockchain with the given data, and appends it to this blockchain
+	 * Mines the next block in this blockchain with the given data, and attempts to append it to this blockchain.
+	 * Returns a bool as to whether the block was successfully added or not
+	 *
+	 * Note if the blockchain has 0 length, instead the genesis block will be appended
 	 */
-	public Block mineNextBlock(string data)
+	public bool mineNextBlock(string data)
 	{
-		throw new ArgumentException();
+		if (getLength() == 0)
+		{
+			addValidBlock(createGenesisBlock());
+			return true;
+		}
+		
+		//TODO unit tests, data to be actual transactions once implemented
+		Block newBlock = Factory.createEmptyBlock(this);
+		newBlock.data = data;
+		newBlock.mineBlock();
+
+		return addValidBlock(newBlock);
 	}
 
 	/**

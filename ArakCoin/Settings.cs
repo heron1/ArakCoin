@@ -36,6 +36,17 @@ public static class Settings
 	
 	// decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called
 	public static bool terminateProgramOnExceptionLog = false;
+
+	/**
+	 * The public key to receive coins if this node mines a block
+	 */
+	public static string nodePublicKey = "";
+
+	/**
+	 * The private key to sign transactions this node creates
+	 */
+	public static string nodePrivateKey = "";
+
 	#endregion
 
 }
