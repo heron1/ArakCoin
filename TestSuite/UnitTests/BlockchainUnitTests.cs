@@ -5,6 +5,7 @@ using ArakCoin;
 namespace TestSuite.UnitTests;
 
 [TestFixture]
+[Category("UnitTests")]
 public class Tests
 {
 	private Blockchain bchain;
@@ -12,6 +13,10 @@ public class Tests
 	[SetUp]
 	public void Setup()
 	{
+		// put blockchain protocol settings to low values for unit tests so they don't take too long
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Settings.BLOCK_INTERVAL_SECONDS = 2;
+		Settings.INITIALIZED_DIFFICULTY = 2;
 		bchain = new Blockchain();
 	}
 
@@ -309,12 +314,6 @@ public class Tests
 	{
 		BigInteger accumDifficulty;
 		
-		// put blockchain protocol settings to low values for this test so it doesn't take too long
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Settings.BLOCK_INTERVAL_SECONDS = 2;
-		Settings.INITIALIZED_DIFFICULTY = 2;
-		bchain = new Blockchain(); // re-initialize with these settings
-		
 		// first assert the convertDifficultyToHashAttempts function is working correctly
 		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(0) == 0);
 		Assert.IsTrue(Utilities.convertDifficultyToHashAttempts(1) == BigInteger.Pow(2, 4 * 1));
@@ -364,6 +363,89 @@ public class Tests
 		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
 		                $"current chain difficulty {bchain.currentDifficulty} asserted");
 	}
+
+	[Test]
+	public void TestWinningChainComparison()
+	{
+		// both chains to have a light difficulty
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Settings.BLOCK_INTERVAL_SECONDS = 1;
+		Settings.INITIALIZED_DIFFICULTY = 1;
+		Blockchain chain1 = new Blockchain();
+		Blockchain chain2 = new Blockchain();
+		
+		// populate first blockchain with 14 blocks
+		for (int i = 0; i < 14; i++)
+		{
+			chain1.addValidBlock(Factory.createAndMineEmptyBlock(chain1));
+		}
+		
+		// populate second chain with only 11 blocks
+		for (int i = 0; i < 11; i++)
+		{
+			chain2.addValidBlock(Factory.createAndMineEmptyBlock(chain2));
+		}
+
+		// assert chain1 has greater accumulative difficulty than 2nd chain, and is also the winning chain
+		BigInteger chain1Difficulty = chain1.calculateAccumulativeChainDifficulty();
+		BigInteger chain2Difficulty = chain2.calculateAccumulativeChainDifficulty();
+		Assert.IsTrue(chain1Difficulty > chain2Difficulty);
+		Debug.WriteLine($"chain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
+		                $"{chain2Difficulty}");
+		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2}) == chain1);
+		
+		// now introduce a new blockchain with higher difficulty settings
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Settings.BLOCK_INTERVAL_SECONDS = 2;
+		Settings.INITIALIZED_DIFFICULTY = 2;
+		Blockchain chain3 = new Blockchain();
+		
+		// populate it with 15 blocks. This chain should have both greater length and accumulative hashpower than other chains
+		for (int i = 0; i < 15; i++)
+		{
+			chain3.addValidBlock(Factory.createAndMineEmptyBlock(chain3));
+		}
+		
+		// put settings back to the way they were previously for chain1 & chain 2
+		// chain3 should now have the greatest accumulative hashpower, but be invalid according to the protocol settings
+		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Settings.BLOCK_INTERVAL_SECONDS = 1;
+		Settings.INITIALIZED_DIFFICULTY = 1;
+		
+		// assert both length and hashpower of chain3 is greater than chain1 or chain2
+		Assert.IsTrue(chain3.getLength() > chain1.getLength() && chain3.getLength() > chain2.getLength());
+		Debug.WriteLine($"chain1 length: {chain1.getLength()}. " +
+		                $"chain2 length: {chain2.getLength()}. chain3 length: {chain3.getLength()}");
+		BigInteger chain3Difficulty = chain3.calculateAccumulativeChainDifficulty();
+		Assert.IsTrue(chain3Difficulty > chain1Difficulty && chain3Difficulty > chain2Difficulty);
+		Debug.WriteLine($"chain3 accumulative difficulty: {chain3Difficulty}");
+		
+		// but chain3 is not the winning chain, since it doesn't satisfy the protocol settings which were changed back
+		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2, chain3}) == chain1);
+
+		// now mine chain2 to 15 blocks (4 more blocks). Compared to chain 1's 14 blocks, it should now be the winning chain
+		for (int i = 0; i < 4; i++)
+		{
+			chain2.addValidBlock(Factory.createAndMineEmptyBlock(chain2));
+		}
+		// for our last assertion we also change the ordering of the list to ensure this doesn't matter in this context
+		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain3, chain2, chain1}) == chain2);
+		
+		// mine one more block for chain 1, so that both chain 1 and chain 2 have equal difficulty
+		chain1.addValidBlock(Factory.createAndMineEmptyBlock(chain1));
+		
+		// assert chain1 and chain2 have equivalent accumulative difficulty
+		chain1Difficulty = chain1.calculateAccumulativeChainDifficulty();
+		chain2Difficulty = chain2.calculateAccumulativeChainDifficulty();
+		Assert.IsTrue(chain1Difficulty == chain2Difficulty);
+
+		// when comparing these chains with equivalent hashpower, the winning chain is chosen based upon the ordering input
+		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain2, chain1}) == chain2);
+		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2}) == chain1);
+		Debug.WriteLine($"chain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
+		                $"{chain2Difficulty}");
+	}
+	
 
 	/**
 	 * Access point for testing arbitrary things in the project

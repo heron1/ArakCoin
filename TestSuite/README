@@ -7,3 +7,7 @@ Non-Automated:
     - ManualTests will allow manual testing of the functional requirements of the project, but either requires manual
         intervention as part of the test, or continues forever thus requiring manual termination after the test has
         been observed to be satisfactory
+        
+Note: The Unit Tests may test multiple classes interacting but that are part of the same component/function, 
+      whereas Integration Tests test different components of the system working together. Functional Tests test parts of 
+      the system as a whole using its actual protocol, and automate whether those tests are within acceptable test parameters

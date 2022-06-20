@@ -3,6 +3,9 @@ using ArakCoin;
 
 namespace TestSuite.FunctionalTests;
 
+/*
+ * These functional tests test the current actual protocol, not any adjusted protocol for testing purposes
+ */
 [TestFixture]
 public class BlockchainFunctionalTests
 {
@@ -28,5 +31,11 @@ public class BlockchainFunctionalTests
 		}
 
 		Assert.IsTrue(bchain.isBlockchainValid());
+	}
+
+	[Test]
+	public void TestByzantineConsensus()
+	{
+		//TODO Three separate nodes communicate different blockchains. Assert all nodes converge to the correct chain
 	}
 }

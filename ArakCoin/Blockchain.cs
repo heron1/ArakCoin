@@ -356,12 +356,15 @@ public class Blockchain
 
 	/**
 	 * Given a list of blockchains, return the valid blockchain with the greatest accumulative hashpower in its mined blocks
+	 * For tiebreakers, the earlier chain in the list is chosen instead of later ones (First In winner)
+	 * For this reason, it's recommended to make the current chain (if applicable) as the first element of the list
+	 * 
 	 * Will return null if there is no valid blockchain
 	 */
 	public static Blockchain? establishWinningChain(List<Blockchain> blockchains)
 	{
-		//TODO this. Note in addition to testing accumulative difficulty, we must also assert the chain is valid. Do tests
 		Blockchain? winningChain = null;
+		BigInteger winnerDifficulty = 0;
 		Blockchain chain;
 		for (int i = 0; i < blockchains.Count; i++)
 		{
@@ -370,14 +373,22 @@ public class Blockchain
 			{
 				// we only need to assert this chain is valid to make it the new winning chain, since current winner is null
 				if (chain.isBlockchainValid())
+				{
 					winningChain = chain;
+					winnerDifficulty = chain.calculateAccumulativeChainDifficulty();
+				}
 			}
 			else
 			{
-				
+				if (chain.calculateAccumulativeChainDifficulty() > winnerDifficulty && chain.isBlockchainValid())
+				{
+					winningChain = chain;
+					winnerDifficulty = chain.calculateAccumulativeChainDifficulty();
+				}
 			}
 		}
-		return null;
+
+		return winningChain;
 	}
 	
 	#region Blockchain Helper Methods
