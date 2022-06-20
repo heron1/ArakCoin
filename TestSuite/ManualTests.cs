@@ -10,6 +10,7 @@ namespace TestSuite;
  * These tests should not be run as part of any automated testing process, but only for manual verificaiton
  */
 [TestFixture]
+[Category("ManualTests")]
 public class ManualTests
 {
 	private Blockchain bchain;

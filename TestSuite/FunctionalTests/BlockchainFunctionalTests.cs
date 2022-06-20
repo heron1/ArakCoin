@@ -7,6 +7,7 @@ namespace TestSuite.FunctionalTests;
  * These functional tests test the current actual protocol, not any adjusted protocol for testing purposes
  */
 [TestFixture]
+[Category("FunctionalTests")]
 public class BlockchainFunctionalTests
 {
 	private Blockchain bchain;
