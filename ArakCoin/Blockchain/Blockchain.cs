@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Runtime.CompilerServices;
+using ArakCoin.Transactions;
 
 namespace ArakCoin;
 
@@ -8,9 +9,15 @@ namespace ArakCoin;
  */
 public class Blockchain
 {
+	//global blockchain state
 	public LinkedList<Block> blockchain = new LinkedList<Block>();
 	public int currentDifficulty = Settings.INITIALIZED_DIFFICULTY;
+	public UTxOut[] uTxOuts = new UTxOut[]{}; //list of unspent tx outputs for this blockchain
+	
+	//local temporary state
+	public List<Transaction> mempool = new List<Transaction>();
 
+	
 	/**
 	 * Iteratively searches the blockchain in O(n) for the block node with the given index. If not found, returns null
 	 * The iterative search begins from the last node, and moves toward the first node, since we are more likely to
@@ -36,12 +43,16 @@ public class Blockchain
 	/**
 	 * Replace the current blockchain with the input one. This does not test to see if it's valid
 	 */
-	public void replaceBlockchain(Blockchain newChain)
+	public void replaceBlockchain(Blockchain newChain, bool replaceMemPool = true)
 	{
 		this.blockchain = newChain.blockchain;
 		this.currentDifficulty = newChain.currentDifficulty;
+		this.uTxOuts = newChain.uTxOuts;
+		
+		if (replaceMemPool)
+			this.mempool = newChain.mempool;
 	}
-	
+
 	/**
 	 * Adds the given block to the end of the blockchain. Note this method does *not* check if such an operation is
 	 * legal within the blockchain's protocol - it will add any block object regardless of its validity. This is not
@@ -50,6 +61,7 @@ public class Blockchain
 	public void forceAddBlock(Block block)
 	{
 		blockchain.AddLast(block);
+		
 	}
 
 	/**
@@ -58,13 +70,23 @@ public class Blockchain
 	 */
 	public bool addValidBlock(Block block)
 	{
-		if (block.index != blockchain.Count() + 1)
-			return false;
 		if (!isNewBlockValid(block))
+			return false;
+
+		if (!updateUTxOuts(block))
 			return false;
 		
 		forceAddBlock(block);
 		updateDifficulty();
+
+		return true;
+	}
+
+	//update the unspent txouts within the given transactions
+	public bool updateUTxOuts(Block block)
+	{
+		UTxOut[] updatedUTxOuts = Transaction.getUpdatedUTxOuts(block.transactions.ToArray(), uTxOuts);
+		uTxOuts = updatedUTxOuts;
 
 		return true;
 	}
@@ -153,28 +175,6 @@ public class Blockchain
 			}
 		}
 	}
-	
-	/**
-	 * Mines the next block in this blockchain with the given data, and attempts to append it to this blockchain.
-	 * Returns a bool as to whether the block was successfully added or not
-	 *
-	 * Note if the blockchain has 0 length, instead the genesis block will be appended
-	 */
-	public bool mineNextBlock(string data)
-	{
-		if (getLength() == 0)
-		{
-			addValidBlock(createGenesisBlock());
-			return true;
-		}
-		
-		//TODO unit tests, data to be actual transactions once implemented
-		Block newBlock = Factory.createEmptyBlock(this);
-		newBlock.data = data;
-		newBlock.mineBlock();
-
-		return addValidBlock(newBlock);
-	}
 
 	/**
 	 * Iteratively searches the blockchain for the block with the given index. If not found, returns null
@@ -205,15 +205,51 @@ public class Blockchain
 	}
 
 	/**
-	 * Checks whether the data portion of the block is valid with respect to its previous block. Here we run two tests:
+	 * Checks whether the data portion of the proposed block is valid to be appended to this blockchain.
+	 * Here we check for main two things -
 	 * 1) Test the format of the data portion of the block is legal given the general protocol of the blockchain
-	 * 2) Test the data contains only valid transactions within the context of its previous block
+	 * 2) Test the data contains only valid transactions within the context of the blockchain
 	 */
-	public static bool validateBlockData(Block block, Block previousBlock)
+	public bool validateNextBlockData(Block block)
 	{
+		Transaction[] transactions = block.transactions.ToArray();
+
+		//block data must contain at least one transaction
+		if (block.transactions is null || transactions.Length == 0)
+			return false;
+		
+		//however it cannot exceed the tx limit per block as per the protocol
+		if (block.transactions.Length > Settings.MAX_TRANSACTIONS_PER_BLOCK)
+			return false;
+
+		var tempPool = new List<Transaction>(); //temp new tx pool for block validation
+		
+		//first ensure the first block transaction is a valid coinbase tx for this block
+		if (!Transaction.isValidCoinbaseTransaction(transactions[0], block))
+			return false;
+		
+		//now validate every normal transaction
+		for (var i = 1; i < transactions.Length; i++)
+		{
+			var tx = transactions[i];
+			
+			//normal transactions cannot be coinbase
+			if (tx.isCoinbaseTx)
+				return false;
+
+			//check the transaction is valid with respect to the current blockchain snapshot
+			if (!Transaction.isValidTransaction(tx, uTxOuts))
+				return false;
+
+			//if tx is valid, add it to the temporary tx pool in this function's scope to ensure
+			//a subsequent transaction doesn't re-use any of the uTxOuts within this block
+			if (!Transaction.isValidTransactionWithinPool(tx, tempPool, uTxOuts))
+				return false;
+
+			tempPool.Add(tx);
+		}
+
 		return true;
-		//TODO implement this
-		throw new ArgumentException();
 	}
 
 	/**
@@ -226,11 +262,11 @@ public class Blockchain
 		{
 			return false;
 		}
-		if (block.index != blockchain.Count() + 1)
+		if (block.index != getLength() + 1)
 			return false; 
 	
 		// *Tests that apply only to the genesis block*
-		if (blockchain.Count() == 0)
+		if (getLength() == 0)
 		{
 			if (!isGenesisBlock(block))
 				return false;
@@ -240,7 +276,7 @@ public class Blockchain
 		
 		// *Tests that apply only to non-genesis blocks*
 		// Retrieve the last block node, ensure the new block can be legally appended to it
-		Block lastBlock = blockchain.Last.Value;
+		Block lastBlock = getLastBlock();
 
 		if (lastBlock.index != block.index - 1)
 			return false;
@@ -248,7 +284,7 @@ public class Blockchain
 			return false;
 		if (block.prevBlockHash != Block.calculateBlockHash(lastBlock))
 			return false;
-		if (!validateBlockData(block, lastBlock))
+		if (!validateNextBlockData(block))
 			return false;
 		if (!isNewBlockTimestampValid(block))
 			return false;
@@ -291,7 +327,7 @@ public class Blockchain
 		LinkedListNode<Block>? blockNode = chain.blockchain.First;
 		
 		// empty chain must have a null first element
-		if (chain.blockchain.Count() == 0)
+		if (chain.getLength() == 0)
 		{
 			if (blockNode is not null)
 				return false;
@@ -353,7 +389,9 @@ public class Blockchain
 	 */
 	public static Block createGenesisBlock()
 	{
-		Block genesisBlock = new Block(1, "", Utilities.getTimestamp(), "0", 0, 1);
+		Block genesisBlock = new Block(1, new Transaction[]{}, 
+			Utilities.getTimestamp(), "0", 0, 1);
+		
 		return genesisBlock;
 	}
 
@@ -362,11 +400,69 @@ public class Blockchain
 	 */
 	public static bool isGenesisBlock(Block block)
 	{
-		// TODO validate block data for the genesis block. Ensure it has exact expected value
-		if (block.index == 1 && block.data == "" && block.prevBlockHash == "0" && block.difficulty == 0 && block.nonce == 1)
+		if (block.index == 1 && block.prevBlockHash == "0" && block.difficulty == 0 && 
+		    block.nonce == 1 && block.transactions.Length == 0)
 			return true;
 
 		return false;
+	}
+
+	//adds the given transaction to the mempool, only if it meets the requirements for this node
+	//note this may fail whilst protocol requirements may pass (use Transaction.isValidTransactionWithinPool to see
+	//if the tx passes protocol requirements). Returns true if success, otherwise false
+	public bool addTransactionToMempoolGivenNodeRequirements(Transaction tx)
+	{
+		if (!Transaction.doesTransactionMeetMemPoolAddRequirements(tx, mempool, uTxOuts))
+			return false;
+
+		mempool.Add(tx);
+		return true;
+	}
+
+	//clears the current mempool
+	public void clearMempool()
+	{
+		this.mempool = new List<Transaction>();
+	}
+	
+	//validates the given mempool - returns true if valid, false otherwise
+	public static bool validateMemPool(List<Transaction> mempool, UTxOut[] uTxOuts)
+	{
+		var tempPool = new List<Transaction>();
+		
+		foreach (var tx in mempool)
+		{
+			if (!Transaction.doesTransactionMeetMemPoolAddRequirements(tx, tempPool, uTxOuts))
+				return false;
+
+			tempPool.Add(tx);
+		}
+		
+		return true;
+	}
+	
+	//validates this blockchain's mempool
+	public bool validateMemPool()
+	{
+		return validateMemPool(this.mempool, this.uTxOuts);
+	}
+
+	//TODO - this is proposed advanced functionality. If time permits, then given a list of input mempools, retrieve the txes
+	//that fill a new mempool up to the allowed protocol size, with the maximum miner fees, whilst ensuring all
+	//transactions are valid. This would allow miners to communicate mempools with one another whilst retaining an
+	//optimal local mempool which may be different to other nodes, whilst still using some received
+	//mempool transactions (if miner fees in such txes are higher than locally
+	//pooled txes and such txes don't yet exist in the local pool, they can be added/replaced within the local pool).
+	public List<Transaction>? createOptimalMempool(List<List<Transaction>> mempools)
+	{
+		return null;
+	}
+	
+	//TODO - Given a list of mempools, return the valid one with the greatest accumulative miner fees. Useful for
+	//inter-node communication to get the best mempool
+	public List<Transaction>? getBestMempool(List<List<Transaction>> mempools)
+	{
+		return null;
 	}
 
 	/**
@@ -405,6 +501,12 @@ public class Blockchain
 
 		return winningChain;
 	}
+	
+	#region Blockchain Transaction Methods
+	
+	
+	#endregion
+	
 	
 	#region Blockchain Helper Methods
 	/**

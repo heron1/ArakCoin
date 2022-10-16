@@ -18,9 +18,9 @@ public class Utilities
 	/**
 	 * Returns the current UTC time since epoch (in seconds)
 	 */
-	public static int getTimestamp()
+	public static long getTimestamp()
 	{
-		return (int)DateTime.UtcNow.Subtract(DateTime.UnixEpoch).TotalSeconds;
+		return (long)DateTime.UtcNow.Subtract(DateTime.UnixEpoch).TotalSeconds;
 	}
 
 	/**

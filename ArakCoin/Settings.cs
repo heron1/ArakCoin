@@ -25,6 +25,15 @@ public static class Settings
 
 	// starting difficulty of the blockchain
 	public static int INITIALIZED_DIFFICULTY = 1;
+	
+	// block reward for the coinbase transaction/mining a new block TODO Advanced: Change this to scale to limit supply
+	public static int BLOCK_REWARD = 15;
+
+	// the protocol public fee address where coins sent to are considered destroyed, but are permitted as miner reward
+	public static string FEE_ADDRESS = "0";
+	
+	// max transactions per block will limit the block size
+	public static int MAX_TRANSACTIONS_PER_BLOCK = 10;
 
 	#endregion
 
@@ -40,12 +49,17 @@ public static class Settings
 	/**
 	 * The public key to receive coins if this node mines a block
 	 */
-	public static string nodePublicKey = "";
+	public static string nodePublicKey = "1f62745d8f64ac7c9e28a17ad113cb2e4d1bd85e6eb6896f58de3bf3cabcd1b9";
 
 	/**
 	 * The private key to sign transactions this node creates
 	 */
-	public static string nodePrivateKey = "";
+	public static string nodePrivateKey = "125ddf4ff1dca068ff72ab0a9dafe54170c3b3315326a0f8945a33db77eefd6b";
+
+	/**
+	 * Reject mempool transactions without a threshold miner fee. Only useful for miners
+	 */
+	public static int minMinerFee = 0;
 
 	#endregion
 

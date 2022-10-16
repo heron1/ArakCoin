@@ -1,33 +1,51 @@
 using System.Diagnostics;
 using System.Numerics;
-using System.Text;
 using ArakCoin;
+using ArakCoin.Transactions;
 
-namespace TestSuite.UnitTests;
+namespace TestSuite.IntegrationTests;
 
 [TestFixture]
-[Category("UnitTests")]
-public class Tests
+[Category("IntegrationTests")]
+public class BlockchainIntegration
 {
+	private Transaction tx;	
+	
 	private Blockchain bchain;
 
 	[SetUp]
 	public void Setup()
 	{
-		// put blockchain protocol settings to low values for unit tests so they don't take too long
+		// put blockchain protocol settings to low values integration tests so they don't take too long
 		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
 		Settings.BLOCK_INTERVAL_SECONDS = 2;
 		Settings.INITIALIZED_DIFFICULTY = 2;
+		
+		Settings.BLOCK_REWARD = 20;
+		Settings.nodePublicKey = testPublicKey;
+		Settings.nodePrivateKey = testPrivateKey;
+		
 		bchain = new Blockchain();
+		//mine a normal block to create some coins for the tests
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //genesis
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //normal
+
+		tx = TransactionFactory.createTransaction(new TxOut[]
+		{
+			new TxOut(testPublicKey2, 2),
+			new TxOut(testPrivateKey3, 3)
+		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		Assert.IsNotNull(tx);
 	}
 
 	[Test]
 	public void TestBlockEquality()
 	{
+		LogTestMsg("Testing TestBlockEquality..");
 		// Note that blocks may mutate, meaning that two equal blocks now may not be equal in the future. This tests that
 		
-		Block b1 = Factory.createEmptyBlock(bchain);
-		Block b2 = Factory.createEmptyBlock(bchain);
+		Block b1 = BlockFactory.createNewBlock(bchain, new Transaction[] {tx});
+		Block b2 = BlockFactory.createNewBlock(bchain, new Transaction[] {tx});
 		b1.timestamp = b2.timestamp;
 		
 		// blocks should have different references
@@ -36,42 +54,54 @@ public class Tests
 		// but the blocks should be identical
 		Assert.IsTrue(b1 == b2);
 		Assert.IsTrue(b1.Equals(b2));
-
+	
 		b1.nonce++;
 		
 		// blocks should now be different
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
-
+	
 		b1.nonce--;
 		b1.timestamp++;
 		
 		// blocks should be different
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
-
+	
 		b1.timestamp--;
 		b1.difficulty++;
 		
 		// blocks should be different
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
-
+	
 		b1.difficulty--;
 		b1.prevBlockHash = "00";
 		
 		// blocks should be different
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
-
+		
 		b1.prevBlockHash = b2.prevBlockHash;
-		b1.data = "1";
+		//modify a tx
+		tx = TransactionFactory.createTransaction(new TxOut[]
+		{
+			new TxOut(testPublicKey2, 3), //moved from 2 to 3
+			new TxOut(testPrivateKey3, 3)
+		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		b1.transactions = new Transaction[] {tx};
 		
 		// blocks should be different
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
-
-		b1.data = b2.data;
+	
+		//change tx back to unmodified state
+		tx = TransactionFactory.createTransaction(new TxOut[]
+		{
+			new TxOut(testPublicKey2, 2), //2 is original amount
+			new TxOut(testPrivateKey3, 3)
+		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		b1.transactions = new Transaction[] {tx};
 		
 		// blocks should still have different references
 		Assert.IsFalse(ReferenceEquals(b1, b2));
@@ -84,39 +114,44 @@ public class Tests
 	[Test]
 	public void TestValidBlocksAdded()
 	{
-		Assert.IsTrue(bchain.getLength() == 0);
-		
-		// genesis block
-		bchain.addValidBlock(Blockchain.createGenesisBlock());
-		Assert.IsTrue(bchain.getLength() == 1);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		LogTestMsg("Testing TestValidBlocksAdded..");
 
-		// normal block 1
-		Block nextBlock = Factory.createAndMineEmptyBlock(bchain);
-		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
-		
-		// normal block 2
-		nextBlock = Factory.createAndMineEmptyBlock(bchain);
+		Assert.IsTrue(bchain.getLength() == 2); // 2 blocks already exist from setup
+
+		// add normal block 
+		Block nextBlock = BlockFactory.createAndMineNewBlock(bchain, null);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
-		
+
 		// normal block but with a timestamp in the future equal to half of the time variance allowance
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE / 2;
+
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			bchain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
+		
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 4);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
-		
+	
 		// normal block but with a timestamp in the past equal to half of the time variance allowance
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE / 2;
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			bchain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
+		
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 5);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
@@ -124,125 +159,160 @@ public class Tests
 		// create a new blockchain with an old head block, and test that it allows a much newer new block timestamp,
 		// but not a much older one than the head block
 		Blockchain oldChain = new Blockchain();
-		Block oldBlockNext = Factory.createEmptyBlock(oldChain);
+		Block oldBlockNext = BlockFactory.createNewBlock(oldChain, null);
 		oldBlockNext.timestamp = 10000; // a very old timestamp
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		//note: there can be no coinbase tx (or any other tx) for the 1st/genesis block
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
+		
 		oldChain.addValidBlock(oldBlockNext); // old genesis block should be accepted
 		Assert.IsTrue(oldChain.getLength() == 1);
-
-		oldBlockNext = Factory.createEmptyBlock(oldChain);
+	
+		oldBlockNext = BlockFactory.createNewBlock(oldChain, null);
 		oldBlockNext.timestamp = Utilities.getTimestamp(); // our current timestamp is much later than the last block
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			oldChain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
+		
 		oldChain.addValidBlock(oldBlockNext); // much newer block should be accepted
 		Assert.IsTrue(oldChain.getLength() == 2);
 		
-		oldBlockNext = Factory.createEmptyBlock(oldChain);
-		oldBlockNext.timestamp = 10; // a much older timestamp than the last block
+		oldBlockNext = BlockFactory.createNewBlock(oldChain, null);
+		oldBlockNext.timestamp = 10001; // a much older timestamp than the last block
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			oldChain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
+		
 		oldChain.addValidBlock(oldBlockNext); // much older block should be rejected
 		Assert.IsFalse(oldChain.getLength() == 3);
 		Assert.IsTrue(oldChain.isBlockchainValid()); // our oldChain should still be valid
 		
-		Assert.IsTrue(bchain.isBlockchainValid());
+		Assert.IsTrue(bchain.isBlockchainValid()); //original chain should be valid
 	}
-
 	
 	[Test]
 	public void TestInvalidBlocksRejected()
 	{
+		LogTestMsg("Testing TestInvalidBlocksRejected..");
+	
 		//TODO keep adding more invalid tests until final block structure determined. This includes testing data element
-		Assert.IsTrue(bchain.getLength() == 0);
-		
-		bchain.addValidBlock(Blockchain.createGenesisBlock());
-		Assert.IsTrue(bchain.getLength() == 1);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
-
+		Assert.IsTrue(bchain.getLength() == 2);
+	
 		Block lastBlock = bchain.getLastBlock();
 		// test invalid index (over by 1)
 		Block nextBlock = new Block(
-			bchain.getLength() + 2, "helloIndex2", Utilities.getTimestamp(),
+			bchain.getLength() + 2, null, Utilities.getTimestamp(),
 			bchain.getLastBlock().calculateBlockHash(), bchain.currentDifficulty, 1);
 		nextBlock.mineBlock();
 		bchain.addValidBlock(nextBlock);
-		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test invalid index (under by 1)
 		nextBlock = new Block(
-			bchain.getLength(), "helloIndex2", Utilities.getTimestamp(),
+			bchain.getLength(), null, Utilities.getTimestamp(),
 			bchain.getLastBlock().calculateBlockHash(), bchain.currentDifficulty, 1);
 		nextBlock.mineBlock();
 		bchain.addValidBlock(nextBlock);
-		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test illegal timestamp value (note we must do a manual mine to ensure timestamp doesn't change)
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.timestamp = -1;
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			bchain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
+		
 		bchain.addValidBlock(nextBlock);
-		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test block with legal timestamp but which is invalid within the context of our test blockchain (over)
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE * 2;
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			bchain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
-		bchain.addValidBlock(nextBlock);
-		Assert.IsFalse(bchain.getLength() == 2);
+		
+		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test block with legal timestamp but which is invalid within the context of our test blockchain (under)
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE * 2;
+		
+		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
+		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
+			bchain.getLength() + 1, null);
+		Assert.IsNotNull(coinbaseTx);
+		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
+		
 		bchain.addValidBlock(nextBlock);
-		Assert.IsFalse(bchain.getLength() == 2);
+		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		//add a valid block before the next hash test, first assert it's successfully added
-		nextBlock = Factory.createAndMineEmptyBlock(bchain);
+		nextBlock = BlockFactory.createAndMineNewBlock(bchain, null);
 		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		lastBlock = nextBlock;
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test invalid hash (from wrong block)
-		nextBlock = Factory.createEmptyBlock(bchain);
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.prevBlockHash = bchain.getBlockByIndex(1).calculateBlockHash();
 		nextBlock.mineBlock();
 		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test mining requirements for the given difficulty are not met
-		nextBlock = Factory.createEmptyBlock(bchain);
-		while (nextBlock.hashDifficultyMatch())
+		nextBlock = BlockFactory.createNewBlock(bchain, null);
+		while (nextBlock.hashDifficultyMatch()) //note we mine here for *no* difficulty match (invalid)
 			nextBlock.nonce++;
 		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
 		// test mining requirements for the given difficulty are not met, after they are initially met
-		nextBlock = Factory.createAndMineEmptyBlock(bchain);
-		while (nextBlock.hashDifficultyMatch())
+		nextBlock = BlockFactory.createAndMineNewBlock(bchain, null);
+		while (nextBlock.hashDifficultyMatch()) //note we mine here for *no* difficulty match (invalid)
 			nextBlock.nonce++;
 		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
+		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
 		
@@ -253,66 +323,76 @@ public class Tests
 		bchain.forceAddBlock(nextBlock);
 		Assert.IsFalse(bchain.isBlockchainValid());
 	}
-
+	
 	[Test]
 	public void TestInvalidGenesisBlockRejected()
 	{
-		Assert.IsTrue(bchain.getLength() == 0);
-
-		// below actions should fail - an invalid genesis block cannot be added
-		Block genesisSpoof = Factory.createEmptyBlock(bchain);
+		LogTestMsg("Testing TestInvalidGenesisBlockRejected..");
+		Blockchain newChain = new Blockchain();
+		Assert.IsTrue(newChain.getLength() == 0);
+	
+		// create a real genesis block
+		Block genesisSpoof = BlockFactory.createNewBlock(newChain, null);
 		Assert.IsTrue(Blockchain.isGenesisBlock(genesisSpoof));
 		
+		// now invalidate it. Below actions should fail - an invalid genesis block cannot be added
 		genesisSpoof.nonce = 2;
 		Assert.IsFalse(Blockchain.isGenesisBlock(genesisSpoof));
-		bchain.addValidBlock(genesisSpoof);
-		Assert.IsTrue(bchain.getLength() == 0);
-
+		newChain.addValidBlock(genesisSpoof);
+		Assert.IsTrue(newChain.getLength() == 0);
+	
 		genesisSpoof.nonce = 1;
 		genesisSpoof.prevBlockHash = "";
-		bchain.addValidBlock(genesisSpoof);
-		Assert.IsTrue(bchain.getLength() == 0);
-
+		newChain.addValidBlock(genesisSpoof);
+		Assert.IsTrue(newChain.getLength() == 0);
+	
+		// force add the invalid genesis block, now blockchain validation should fail
 		genesisSpoof.prevBlockHash = "";
-		bchain.forceAddBlock(genesisSpoof);
-		Assert.IsFalse(bchain.isBlockchainValid());
+		newChain.forceAddBlock(genesisSpoof);
+		Assert.IsFalse(newChain.isBlockchainValid());
 		
 		// replace blockchain, restore genesisSpoof back to real genesis, ensure it successfully adds as genesis block 
-		bchain.replaceBlockchain(new Blockchain());
+		newChain.replaceBlockchain(new Blockchain());
 		genesisSpoof.prevBlockHash = "0";
-		bchain.addValidBlock(genesisSpoof);
-		Assert.IsTrue(bchain.getLength() == 1);
-		Assert.IsTrue(bchain.getLastBlock() == genesisSpoof);
+		newChain.addValidBlock(genesisSpoof);
+		Assert.IsTrue(newChain.getLength() == 1);
+		Assert.IsTrue(newChain.getLastBlock() == genesisSpoof);
 	}
-
+	
 	[Test]
 	public void TestInvalidBlockchainDetected()
 	{
-		Assert.IsTrue(bchain.getLength() == 0);
+		LogTestMsg("Testing TestInvalidBlockchainDetected..");
+		Blockchain newChain = new Blockchain();
 		
-		bchain.addValidBlock(Blockchain.createGenesisBlock());
-		Assert.IsTrue(bchain.getLength() == 1);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
-
-		Block nextBlock = Factory.createAndMineEmptyBlock(bchain);
-		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 2);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		Assert.IsTrue(newChain.getLength() == 0);
 		
-		nextBlock = Factory.createAndMineEmptyBlock(bchain);
-		bchain.addValidBlock(nextBlock);
-		Assert.IsTrue(bchain.getLength() == 3);
-		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
+		newChain.addValidBlock(Blockchain.createGenesisBlock());
+		Assert.IsTrue(newChain.getLength() == 1);
+		Assert.IsTrue(newChain.getLastBlock().index == newChain.getLength());
+	
+		Block nextBlock = BlockFactory.createAndMineNewBlock(newChain);
+		newChain.addValidBlock(nextBlock);
+		Assert.IsTrue(newChain.getLength() == 2);
+		Assert.IsTrue(newChain.getLastBlock().index == newChain.getLength());
+		
+		nextBlock = BlockFactory.createAndMineNewBlock(newChain);
+		newChain.addValidBlock(nextBlock);
+		Assert.IsTrue(newChain.getLength() == 3);
+		Assert.IsTrue(newChain.getLastBlock().index == newChain.getLength());
 		
 		// blockchain is valid up until this point, but now we will change the nonce in block 2, making it invalid
-		bchain.getBlockByIndex(2).nonce++;
+		newChain.getBlockByIndex(2).nonce++;
 		
-		Assert.IsFalse(bchain.isBlockchainValid());
+		Assert.IsFalse(newChain.isBlockchainValid());
 	}
-
+	
 	[Test]
 	public void TestBlockchainAccumulativeDifficulty()
 	{
+		LogTestMsg("Testing TestBlockchainAccumulativeDifficulty..");
+		Blockchain newChain = new Blockchain();
+	
 		BigInteger accumDifficulty;
 		
 		// first assert the convertDifficultyToHashAttempts function is working correctly
@@ -323,36 +403,36 @@ public class Tests
 		
 		// We now test the calculateAccumulativeChainDifficulty function
 		// genesis block alone has 0 accumulative difficulty
-		bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
-		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == 0); 
-
+		BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
+		Assert.IsTrue(newChain.calculateAccumulativeChainDifficulty() == 0); 
+	
 		// adding 1 block should give the chain an accumulative difficulty equal to the initialized difficulty
-		bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+		BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
 		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY);
-		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == accumDifficulty);
-		Assert.IsTrue(bchain.getLength() == 2);
-		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
-		                $"current chain difficulty {bchain.currentDifficulty} asserted");
-
-		while (bchain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
+		Assert.IsTrue(newChain.calculateAccumulativeChainDifficulty() == accumDifficulty);
+		Assert.IsTrue(newChain.getLength() == 2);
+		LogTestMsg($"\tAccum. difficulty of {accumDifficulty} at {newChain.getLength()} blocks with " +
+		           $"current chain difficulty {newChain.currentDifficulty} asserted");
+	
+		while (newChain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
 		{
-			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+			BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
 		}
 		// accumulative difficulty should be equal to the hash difficulty of chain length minus 1 before the first
 		// update difficulty event (due to ignoring genesis block)
 		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY)
-		                  * (bchain.getLength() - 1);
-		Assert.IsTrue(bchain.calculateAccumulativeChainDifficulty() == accumDifficulty);
-		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
-		                $"current chain difficulty {bchain.currentDifficulty} asserted");
-
-		while (bchain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS * 2)
+		                  * (newChain.getLength() - 1);
+		Assert.IsTrue(newChain.calculateAccumulativeChainDifficulty() == accumDifficulty);
+		LogTestMsg($"\tAccum. difficulty of {accumDifficulty} at {newChain.getLength()} blocks with " +
+		           $"current chain difficulty {newChain.currentDifficulty} asserted");
+	
+		while (newChain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS * 2)
 		{
-			bchain.addValidBlock(Factory.createAndMineEmptyBlock(bchain));
+			BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
 		}
 		// fully test accumulative difficulty behaves as expected after difficulty adjustment
 		int lastMinedDifficulty = 
-			bchain.getBlockByIndex(bchain.getLength() - 1).difficulty; // difficulty prior to 2nd difficulty adjustment
+			newChain.getBlockByIndex(newChain.getLength() - 1).difficulty; // difficulty prior to 2nd difficulty adjustment
 		BigInteger firstIntervalAccumulativeDifficulty =
 			Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY) 
 			* (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1); // - 1 to subtract genesis block from this interval
@@ -360,14 +440,16 @@ public class Tests
 			Utilities.convertDifficultyToHashAttempts(lastMinedDifficulty) * Settings.DIFFICULTY_INTERVAL_BLOCKS;
 		accumDifficulty = firstIntervalAccumulativeDifficulty;
 		accumDifficulty += secondIntervalAccumulativeDifficulty;
-		Assert.IsTrue(accumDifficulty == bchain.calculateAccumulativeChainDifficulty());
-		Debug.WriteLine($"Accum. difficulty of {accumDifficulty} at {bchain.getLength()} blocks with " +
-		                $"current chain difficulty {bchain.currentDifficulty} asserted");
+		Assert.IsTrue(accumDifficulty == newChain.calculateAccumulativeChainDifficulty());
+		LogTestMsg($"\tAccum. difficulty of {accumDifficulty} at {newChain.getLength()} blocks with " +
+		           $"current chain difficulty {newChain.currentDifficulty} asserted");
 	}
-
+	
 	[Test]
 	public void TestWinningChainComparison()
 	{
+		LogTestMsg("Testing TestWinningChainComparison..");
+	
 		// both chains to have a light difficulty
 		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
 		Settings.BLOCK_INTERVAL_SECONDS = 1;
@@ -378,20 +460,20 @@ public class Tests
 		// populate first blockchain with 14 blocks
 		for (int i = 0; i < 14; i++)
 		{
-			chain1.addValidBlock(Factory.createAndMineEmptyBlock(chain1));
+			BlockFactory.mineNextBlockAndAddToBlockchain(chain1);
 		}
 		
 		// populate second chain with only 11 blocks
 		for (int i = 0; i < 11; i++)
 		{
-			chain2.addValidBlock(Factory.createAndMineEmptyBlock(chain2));
+			BlockFactory.mineNextBlockAndAddToBlockchain(chain2);
 		}
-
+	
 		// assert chain1 has greater accumulative difficulty than 2nd chain, and is also the winning chain
 		BigInteger chain1Difficulty = chain1.calculateAccumulativeChainDifficulty();
 		BigInteger chain2Difficulty = chain2.calculateAccumulativeChainDifficulty();
 		Assert.IsTrue(chain1Difficulty > chain2Difficulty);
-		Debug.WriteLine($"chain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
+		LogTestMsg($"\tchain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
 		                $"{chain2Difficulty}");
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2}) == chain1);
 		
@@ -404,7 +486,7 @@ public class Tests
 		// populate it with 15 blocks. This chain should have both greater length and accumulative hashpower than other chains
 		for (int i = 0; i < 15; i++)
 		{
-			chain3.addValidBlock(Factory.createAndMineEmptyBlock(chain3));
+			BlockFactory.mineNextBlockAndAddToBlockchain(chain3);
 		}
 		
 		// put settings back to the way they were previously for chain1 & chain 2
@@ -415,38 +497,98 @@ public class Tests
 		
 		// assert both length and hashpower of chain3 is greater than chain1 or chain2
 		Assert.IsTrue(chain3.getLength() > chain1.getLength() && chain3.getLength() > chain2.getLength());
-		Debug.WriteLine($"chain1 length: {chain1.getLength()}. " +
+		LogTestMsg($"\tchain1 length: {chain1.getLength()}. " +
 		                $"chain2 length: {chain2.getLength()}. chain3 length: {chain3.getLength()}");
 		BigInteger chain3Difficulty = chain3.calculateAccumulativeChainDifficulty();
 		Assert.IsTrue(chain3Difficulty > chain1Difficulty && chain3Difficulty > chain2Difficulty);
-		Debug.WriteLine($"chain3 accumulative difficulty: {chain3Difficulty}");
+		LogTestMsg($"\tchain3 accumulative difficulty: {chain3Difficulty}");
 		
 		// but chain3 is not the winning chain, since it doesn't satisfy the protocol settings which were changed back
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2, chain3}) == chain1);
-
+	
 		// now mine chain2 to 15 blocks (4 more blocks). Compared to chain 1's 14 blocks, it should now be the winning chain
 		for (int i = 0; i < 4; i++)
 		{
-			chain2.addValidBlock(Factory.createAndMineEmptyBlock(chain2));
+			BlockFactory.mineNextBlockAndAddToBlockchain(chain2);
 		}
 		// for our last assertion we also change the ordering of the list to ensure this doesn't matter in this context
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain3, chain2, chain1}) == chain2);
 		
 		// mine one more block for chain 1, so that both chain 1 and chain 2 have equal difficulty
-		chain1.addValidBlock(Factory.createAndMineEmptyBlock(chain1));
+		BlockFactory.mineNextBlockAndAddToBlockchain(chain1);
 		
 		// assert chain1 and chain2 have equivalent accumulative difficulty
 		chain1Difficulty = chain1.calculateAccumulativeChainDifficulty();
 		chain2Difficulty = chain2.calculateAccumulativeChainDifficulty();
 		Assert.IsTrue(chain1Difficulty == chain2Difficulty);
-
+	
 		// when comparing these chains with equivalent hashpower, the winning chain is chosen based upon the ordering input
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain2, chain1}) == chain2);
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2}) == chain1);
-		Debug.WriteLine($"chain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
+		LogTestMsg($"\tchain1 accumulative difficulty: {chain1Difficulty}. chain2 accumulative difficulty:" +
 		                $"{chain2Difficulty}");
 	}
-	
+
+	[Test]
+	public void TestTamperedBlockchainRejected()
+	{
+		//TODO continually update this as new ways to tamper the blockchain become available (eg: new features added)
+		
+		//Test 1 - tampered historical transaction
+		//Setup: mine some blocks, do some transactions
+		bchain = new Blockchain();
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //genesis
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //normal
+		tx = TransactionFactory.createTransaction(new TxOut[]
+		{
+			new TxOut(testPublicKey2, 2),
+			new TxOut(testPrivateKey3, 3)
+		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		TransactionFactory.createNewTransactionForBlockchain(
+			new TxOut[]
+			{
+				new TxOut(testPublicKey2, 30), 
+				new TxOut(testPublicKey3, 30),
+			}, testPrivateKey, 
+			bchain, 5);
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		TransactionFactory.createNewTransactionForBlockchain(
+			new TxOut[]
+			{
+				new TxOut(testPublicKey2, 5), 
+				new TxOut(testPublicKey, 2),
+			}, testPrivateKey3, 
+			bchain, 1);
+		TransactionFactory.createNewTransactionForBlockchain(
+			new TxOut[]
+			{
+				new TxOut(testPublicKey3, 12), 
+				new TxOut(testPublicKey, 10),
+			}, testPrivateKey2, 
+			bchain, 7);
+		TransactionFactory.createNewTransactionForBlockchain(
+			new TxOut[]
+			{
+				new TxOut(testPublicKey2, 17), 
+				new TxOut(testPublicKey3, 4),
+			}, testPrivateKey, 
+			bchain, 0);
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		//blockchain should be valid
+		Assert.IsTrue(bchain.isBlockchainValid());
+		//Test: We will now tamper with a tx in the 6th block
+		bchain.getBlockByIndex(6).transactions[1].txOuts[1].amount--;
+		//Assert chain is now invalid
+		Assert.IsFalse(bchain.isBlockchainValid());
+		//Put back to correct value, but now modify coinbase tx in the 3rd block
+		bchain.getBlockByIndex(6).transactions[1].txOuts[1].amount++;
+		Assert.IsTrue(bchain.isBlockchainValid());
+		bchain.getBlockByIndex(3).transactions[0].txIns[0].txOutId = "hi";
+		Assert.IsFalse(bchain.isBlockchainValid());
+	}
 
 	/**
 	 * Access point for testing arbitrary things in the project
@@ -454,7 +596,6 @@ public class Tests
 	[Test]
 	public void Temp()
 	{
-		
 		
 	}
 

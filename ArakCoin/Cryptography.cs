@@ -33,9 +33,9 @@ public static class Cryptography
 		{
 			ExportPolicy = KeyExportPolicies.AllowPlaintextArchiving
 		};
-		
+
 		using Key key = new Key(algorithm, creationParameters); // allow key export
-		
+
 		byte[] publickey = key.Export(KeyBlobFormat.RawPublicKey);
 		byte[] privateKey = key.Export(KeyBlobFormat.RawPrivateKey);
 
@@ -46,27 +46,62 @@ public static class Cryptography
 	}
 
 	/**
-	 * Sign the input data with the given private key. Returns a string representing the signed data
+	 * Sign the input data with the given private key. Returns a string representing the signed data. If the operation fails,
+	 * will return null
 	 */
-	public static string signData(string data, string privateKey)
+	public static string? signData(string data, string privateKey)
 	{
-		using Key key = convertPrivateKeyStringToKey(privateKey);
-		
-		byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-		byte[] sig = algorithm.Sign(key, dataBytes);
+		try
+		{
+			using Key key = convertPrivateKeyStringToKey(privateKey);
 
-		return Convert.ToHexString(sig).ToLower();
+			byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+			byte[] sig = algorithm.Sign(key, dataBytes);
+
+			return Convert.ToHexString(sig).ToLower();
+		}
+		catch (FormatException e)
+		{
+			return null;
+		}
 	}
 
 	/**
-	 * Verify whether the signature, data and public key match. Returns true if a match, false if not
+	 * Returns the public key from the given private key. If private key is in invalid format, returns null
+	 */
+	public static string? getPublicKeyFromPrivateKey(string privateKey)
+	{
+		try
+		{
+			using Key key = convertPrivateKeyStringToKey(privateKey);
+			byte[] publickey = key.Export(KeyBlobFormat.RawPublicKey);
+
+			return Convert.ToHexString(publickey).ToLower();
+		}
+		catch (FormatException e)
+		{
+			return null;
+		}
+	}
+
+	/**
+	 * Verify whether the input data was signed by the private key belonging to the corresponding public key, based
+	 * upon the input signature.
+	 * Returns true if so, false if not. If the operation fails, will also return false
 	 */
 	public static bool verifySignedData(string signature, string data, string publicKey)
 	{
-		PublicKey pkey = convertPublicKeyStringToPublicKey(publicKey);
-		byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-		byte[] signatureBytes = Convert.FromHexString(signature);
+		try
+		{
+			PublicKey pkey = convertPublicKeyStringToPublicKey(publicKey);
+			byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+			byte[] signatureBytes = Convert.FromHexString(signature);
 
-		return algorithm.Verify(pkey, dataBytes, signatureBytes);
+			return algorithm.Verify(pkey, dataBytes, signatureBytes);
+		}
+		catch (FormatException e)
+		{
+			return false;
+		}
 	}
 }
