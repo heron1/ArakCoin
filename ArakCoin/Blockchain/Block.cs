@@ -29,11 +29,13 @@ public class Block
 	}
 	
 	/**
-	 * Calculate the block hash for any given block
+	 * Calculate the block hash for any given block. Returns null if the block is invalid
 	 */
-	public static string calculateBlockHash(Block block)
+	public static string? calculateBlockHash(Block block)
 	{
-		string transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
+		string? transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
+		if (transactionsString is null)
+			return null;
 		string inputStr =
 			$"{block.index.ToString()},{transactionsString}," +
 			$"{block.timestamp.ToString()}," +
@@ -43,9 +45,9 @@ public class Block
 	}
 
 	/**
-	 * Calculate block hash for this block
+	 * Calculate block hash for this block. Returns null if the block is invalid
 	 */
-	public string calculateBlockHash()
+	public string? calculateBlockHash()
 	{
 		return calculateBlockHash(this);
 	}
@@ -55,7 +57,9 @@ public class Block
 	 */
 	public bool hashDifficultyMatch()
 	{
-		string hash = calculateBlockHash();
+		string? hash = calculateBlockHash();
+		if (hash is null)
+			return false;
 		int hashDifficulty = 0;
 		for (int i = 0; i < hash.Length; i++)
 		{
@@ -103,6 +107,10 @@ public class Block
 		
 		long timestampStart = Utilities.getTimestamp();
 		
+		//assert block has valid data, if it doesn't, return false
+		if (calculateBlockHash(this) is null)
+			return false;
+		
 		//now we begin the mining process
 		while (!hashDifficultyMatch())
 		{
@@ -124,7 +132,7 @@ public class Block
 
 		return true; // block has been mined
 	}
-	
+
 	
 	#region equality override
 	public override bool Equals(object? o)

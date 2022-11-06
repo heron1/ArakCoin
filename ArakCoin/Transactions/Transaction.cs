@@ -17,11 +17,13 @@ public class Transaction
 		this.isCoinbaseTx = isCoinbaseTx;
 	}
 
-	public static string convertTxArrayToString(Transaction[] transactions)
+	public static string? convertTxArrayToString(Transaction[] transactions)
 	{
 		StringBuilder accumString = new StringBuilder();
 		foreach (Transaction t in transactions)
 		{
+			if (Transaction.getTxId(t) != t.id)
+				return null;
 			accumString.Append(t.id + ",");
 		}
 
