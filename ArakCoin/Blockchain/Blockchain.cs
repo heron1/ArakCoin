@@ -5,7 +5,7 @@ using ArakCoin.Transactions;
 namespace ArakCoin;
 
 /**
- * The Blockchain object is simply a linked list of Block objects, along with some helper methods
+ * The Blockchain object is simply a linked list of Block objects, along with some state fields & helper methods
  */
 public class Blockchain
 {
@@ -346,6 +346,12 @@ public class Blockchain
 
 			blockNode = blockNode.Next;
 		}
+		
+		//assert total circulating coin supply is valid
+		long expectedSupply = (rebuildChain.getLength() - 1) * Settings.BLOCK_REWARD;
+		long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
+		if (expectedSupply != actualSupply)
+			return false;
 
 		return true;
 	}
