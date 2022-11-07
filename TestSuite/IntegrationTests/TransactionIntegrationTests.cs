@@ -288,6 +288,11 @@ public class TransactionIntegration
 		Assert.IsTrue(add1Balance == 111); //86 + 20 from block reward + 5 mining fee
 		Assert.IsTrue(add2Balance == 14); //39 - 25 from tx (20 sent, 5 mining fee paid)
 		Assert.IsTrue(add3Balance == 55); //finally receives the 20 coins from add2
+		
+		//attempt to create a transaction with no coins and add it to the blockchain, this should fail
+		var output = TransactionFactory.createNewTransactionForBlockchain(new TxOut[] {
+			new TxOut(testPublicKey2, 0)}, testPrivateKey, bchain);
+		Assert.IsNull(output);
 
 		//we have done a lot of txes: assert total balances of addresses used is equal to the
 		//accumulative value of the UTxOuts for the blockchain, and also that this is equal

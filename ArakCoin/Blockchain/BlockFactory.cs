@@ -28,9 +28,9 @@ public static class BlockFactory
 		return block;
 	}
 
-	//returns true if a new block is successfully mined and added to blockchain, false if not. If no mempool
-	//is given as an argument, it will use the input blockchain mempool. If the default blockchain mempool is
-	//used, it will be cleared after the mine
+	/** returns true if a new block is successfully mined and added to blockchain, false if not. If no mempool
+	*is given as an argument, it will use the input blockchain mempool. If the default blockchain mempool is
+	*used, it will be cleared after the mine */
 	public static bool mineNextBlockAndAddToBlockchain(Blockchain blockchain, Transaction[]? mempool = null)
 	{
 		Block minedBlock;

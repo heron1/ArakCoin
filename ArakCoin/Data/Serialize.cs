@@ -5,7 +5,7 @@ namespace ArakCoin;
 
 /**
  * A wrapper class for serializing and deserializing data. Also performs some sanitization checking, but no validation.
- * Method signatures should remain unchanged regardless of underlying serialization implementation (currently Newtonsoft)
+ * Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
  */
 public static class Serialize
 {
@@ -17,7 +17,7 @@ public static class Serialize
     //attempts to serialize the input block into a json string. If this fails, returns null
     public static string? serializeBlockToJson(Block block)
     {
-        //first ensure block has a valid hash (does not validate the block)
+        //first ensure block has a valid hash (this does not validate the block)
         if (block.calculateBlockHash() is null)
             return null;
 

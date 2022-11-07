@@ -91,7 +91,7 @@ public class DataIntegrationTests
         Assert.IsTrue(bchain == deserialized);
         
         //modify the current bchain, assert it's different to the deserialized one
-        bchain.getBlockByIndex(2).nonce++;
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
         Assert.IsFalse(bchain == deserialized);
     }
 
@@ -173,7 +173,7 @@ public class DataIntegrationTests
         json = Storage.readJsonFromDisk("blockchain.json");
         Blockchain deserializedBlockchain = Serialize.deserializeJsonToBlockchain(json);
         Assert.IsTrue(deserializedBlockchain == bchain);
-        
+        Assert.IsTrue(deserializedBlockchain.isBlockchainValid());
     }
     
     [Test]

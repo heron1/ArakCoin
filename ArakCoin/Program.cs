@@ -1,7 +1,4 @@
-﻿global using System;
-global using System.Security.Cryptography;
-
-namespace ArakCoin
+﻿namespace ArakCoin
 {
 	internal class Program
 	{

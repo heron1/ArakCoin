@@ -11,8 +11,10 @@ public static class TransactionFactory
         return new TxOut[] { feeTx }.Concat(txOuts).ToArray();
     }
     
-    //Attempts to create a new transaction with the given txOuts, signing them with the given privateKey and
-    //then adding the transaction to the given blockchain's mempool. Returns the tx on succes, otherwise null
+    /**
+     * Attempts to create a new transaction with the given txOuts, signing them with the given privateKey and
+     * then adding the transaction to the given blockchain's mempool. Returns the tx on succes, otherwise null
+     */
     public static Transaction? createNewTransactionForBlockchain(TxOut[] txOuts, string privateKey,
         Blockchain bchain, long minerFee = 0, bool addToMemPool = true)
     {
@@ -36,6 +38,8 @@ public static class TransactionFactory
         }
         
         long totalTxOutAmount = getTotalAmountFromTxOuts(txOuts); //sum of all coins in the TxOuts
+        if (totalTxOutAmount == 0)
+            return null; //a transaction containing no coins is considered invalid
         
         string? publicKey = Cryptography.getPublicKeyFromPrivateKey(privateKey);
         if (publicKey is null)

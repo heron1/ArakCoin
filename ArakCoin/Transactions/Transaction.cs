@@ -134,6 +134,10 @@ public class Transaction
 		//ensure transaction hasn't been tampered with
 		if (getTxId(tx) != tx.id)
 			return false;
+		
+		//ensure there is both at least 1 txIn and 1 txOut
+		if (tx.txIns.Length == 0 || tx.txOuts.Length == 0)
+			return false;
 
 		//validate txIns and txOuts
 		long totalTxInAmounts = 0;
@@ -164,6 +168,9 @@ public class Transaction
 
 		if (totalTxInAmounts != totalTxOutValues) //ensure total TxIn and TxOut amounts match
 			return false;
+
+		if (totalTxOutValues == 0)
+			return false; //we don't accept transactions without any coins
 	
 		return true;
 	}
