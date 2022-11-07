@@ -586,8 +586,23 @@ public class BlockchainIntegration
 		//Put back to correct value, but now modify coinbase tx in the 3rd block
 		bchain.getBlockByIndex(6).transactions[1].txOuts[1].amount++;
 		Assert.IsTrue(bchain.isBlockchainValid());
+		string origValue = bchain.getBlockByIndex(3).transactions[0].txIns[0].txOutId;
 		bchain.getBlockByIndex(3).transactions[0].txIns[0].txOutId = "hi";
 		Assert.IsFalse(bchain.isBlockchainValid());
+		bchain.getBlockByIndex(3).transactions[0].txIns[0].txOutId = origValue;
+
+		//Test 2 - Test tampered unspent utxout
+		bchain.uTxOuts[0].amount++;
+		Assert.IsFalse(bchain.isBlockchainValid());
+		bchain.uTxOuts[0].amount--;
+		
+		//Test 3 - Test tampered difficulty
+		bchain.currentDifficulty++;
+		Assert.IsFalse(bchain.isBlockchainValid());
+		bchain.currentDifficulty--;
+
+		//after all tests, chain should be restored to a valid state. Assert it's valid
+		Assert.IsTrue(bchain.isBlockchainValid());
 	}
 
 	/**

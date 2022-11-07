@@ -27,13 +27,20 @@ public static class Serialize
     //attempts to deserialize the input string to a block object. If this fails, returns null
     public static Block? deserializeJsonToBlock(string jsonBlock)
     {
-        Block? deserializedBlock = JsonConvert.DeserializeObject<Block>(jsonBlock);
-        if (deserializedBlock is null)
+        try
+        {
+            Block? deserializedBlock = JsonConvert.DeserializeObject<Block>(jsonBlock);
+            if (deserializedBlock is null)
+                return null;
+            if (deserializedBlock.calculateBlockHash() is null)
+                return null;
+
+            return deserializedBlock;
+        }
+        catch
+        {
             return null;
-        if (deserializedBlock.calculateBlockHash() is null)
-            return null;
-        
-        return deserializedBlock;
+        }
     }
     
     //atempts to serialize the input blockchain into a json string. If this fails, returns null
@@ -45,7 +52,14 @@ public static class Serialize
     //attempts to deserialize the input string to a blockchain object. If this fails, returns null
     public static Blockchain? deserializeJsonToBlockchain(string jsonBlockchain)
     {
-        return JsonConvert.DeserializeObject<Blockchain>(jsonBlockchain);
+        try
+        {
+            return JsonConvert.DeserializeObject<Blockchain>(jsonBlockchain);
+        }
+        catch
+        {
+            return null;
+        }
     }
     
     //attempts to serialize a mempool. If this fails, returns null
@@ -57,6 +71,13 @@ public static class Serialize
     //attempts to deserialize the input string to a mempool. If this fails, returns null
     public static List<Transaction>? deserializeMempoolToJson(string jsonContainer)
     {
-        return JsonConvert.DeserializeObject<List<Transaction>>(jsonContainer);
+        try
+        {
+            return JsonConvert.DeserializeObject<List<Transaction>>(jsonContainer);
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

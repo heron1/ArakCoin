@@ -5,7 +5,7 @@ namespace TestSuite.IntegrationTests;
 
 [TestFixture]
 [Category("IntegrationTests")]
-public class SerializationIntegrationTests
+public class DataIntegrationTests
 {
     [SetUp]
     public void Setup()
@@ -13,7 +13,8 @@ public class SerializationIntegrationTests
         Settings.nodePublicKey = testPublicKey;
     }
 
-    //todo - these unit tests should test for data corruption
+    //todo - these unit tests should test for data corruption (particularly in the serialized form)
+    //note that the Serialize class should test against this
     
     [Test]
     public void testBlockSerialization()
@@ -127,8 +128,60 @@ public class SerializationIntegrationTests
     }
     
     [Test]
+    public void TestDataStorage()
+    {
+        var bchain = new Blockchain();
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
+        {
+            new TxOut(testPublicKey2, 10),
+            new TxOut(testPublicKey3, 3)
+        }, testPrivateKey, bchain, 4);
+        TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
+        {
+            new TxOut(testPublicKey3, 1)}, testPrivateKey, bchain);
+        Block block = BlockFactory.createAndMineNewBlock(bchain, bchain.mempool.ToArray());
+        Assert.IsTrue(bchain.isNewBlockValid(block));
+        Assert.IsTrue(bchain.mempool.Count == 2); //should contain 2 txes
+        
+        //Test 1: store the mempool on disk, assert it can be retrieved and is identical to local copy in memory
+        string? serializedMempool = Serialize.serializeMempoolToJson(bchain.mempool);
+        Assert.IsNotNull(serializedMempool);
+        Storage.writeJsonToDisk(serializedMempool, "mempool.json");
+        string json = Storage.readJsonFromDisk("mempool.json");
+        List<Transaction> deserializedMempool = Serialize.deserializeMempoolToJson(json);
+        Assert.IsTrue(deserializedMempool.Count == bchain.mempool.Count);
+        for (int i = 0; i < deserializedMempool.Count; i++)
+        {
+            Assert.IsTrue(deserializedMempool[i] == bchain.mempool[i]);
+        }
+        
+        //Test 2: store the mined block on disk, assert it can be retrieved and is identical to local copy in memory
+        string? serializedBlock = Serialize.serializeBlockToJson(block);
+        Storage.writeJsonToDisk(serializedBlock, "block.json");
+        json = Storage.readJsonFromDisk("block.json");
+        Block deserializedBlock = Serialize.deserializeJsonToBlock(json);
+        Assert.IsTrue(deserializedBlock == block);
+        
+        //Test 3: Store the entire blockchain on disk, assert it can be retrieved and is identical to local copy in
+        //memory
+        string? serializedBlockchain = Serialize.serializeBlockchainToJson(bchain);
+        Storage.writeJsonToDisk(serializedBlockchain, "blockchain.json");
+        json = Storage.readJsonFromDisk("blockchain.json");
+        Blockchain deserializedBlockchain = Serialize.deserializeJsonToBlockchain(json);
+        Assert.IsTrue(deserializedBlockchain == bchain);
+        
+    }
+    
+    [Test]
     public void Temp()
     {
-        
+        // var d = Storage.readJsonFromDisk("blockchain.json");
+        // var ds = Serialize.deserializeJsonToBlockchain(d);
+        // bool v = ds.isBlockchainValid();
+        // int a = 3;
     }
 }

@@ -347,6 +347,19 @@ public class Blockchain
 			blockNode = blockNode.Next;
 		}
 		
+		//assert difficulty is correct
+		if (rebuildChain.currentDifficulty != chain.currentDifficulty)
+			return false;
+		
+		//assert the uTxOuts in the rebuild chain are identical to input chain
+		if (rebuildChain.uTxOuts.Length != chain.uTxOuts.Length)
+			return false;
+		for (int i = 0; i < rebuildChain.uTxOuts.Length; i++)
+		{
+			if (rebuildChain.uTxOuts[i] != chain.uTxOuts[i])
+				return false;
+		}
+		
 		//assert total circulating coin supply is valid
 		long expectedSupply = (rebuildChain.getLength() - 1) * Settings.BLOCK_REWARD;
 		long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
@@ -486,7 +499,7 @@ public class Blockchain
 		for (int i = 0; i < blockchains.Count; i++)
 		{
 			chain = blockchains[i];
-			if (winningChain == null)
+			if (winningChain is null)
 			{
 				// we only need to assert this chain is valid to make it the new winning chain, since current winner is null
 				if (chain.isBlockchainValid())
