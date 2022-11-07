@@ -547,5 +547,61 @@ public class Blockchain
 	}
 	
 	#endregion
+	
+	
+	#region equality override
+	
+	//determine if two blockchains are identical. Does not check local fields (eg: mempool)
+	public override bool Equals(object? o)
+	{
+		if (o is null || o.GetType() != typeof(Blockchain))
+			return false;
+		Blockchain other = (Blockchain)o;
+
+		//first assert difficulty is identical
+		if (this.currentDifficulty != other.currentDifficulty)
+			return false;
+		
+		//next assert the UTxOuts are identical
+		if (this.uTxOuts.Length != other.uTxOuts.Length)
+			return false;
+		for (int i = 0; i < uTxOuts.Length; i++)
+		{
+			if (this.uTxOuts[i] != other.uTxOuts[i])
+				return false;
+		}
+		
+		//now check every block is identical
+		if (this.blockchain.Count != other.blockchain.Count)
+			return false;
+		LinkedListNode<Block>? nodeThis = this.blockchain.First;
+		LinkedListNode<Block>? nodeOther = other.blockchain.First;
+		if (nodeThis is null && nodeOther is null)
+			return true;
+		if (nodeThis is null || nodeOther is null)
+			return false;
+		while (nodeThis is not null)
+		{
+			if (nodeThis.Value != nodeOther.Value)
+				return false;
+
+			nodeThis = nodeThis.Next;
+			nodeOther = nodeOther.Next;
+		}
+
+		return true;
+	}
+
+	public static bool operator == (Blockchain b1, Blockchain b2)
+	{
+		return b1.Equals(b2);
+	}
+
+	public static bool operator != (Blockchain b1, Blockchain b2)
+	{
+		return !(b1 == b2);
+	}
+	
+	#endregion equality override
 
 }

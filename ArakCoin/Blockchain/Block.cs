@@ -13,7 +13,7 @@ public class Block
 	public string prevBlockHash;
 	public int difficulty;
 	public long nonce;
-
+	
 	public Block(int index, Transaction[]? transactions, long timestamp, string prevBlockHash, int difficulty, 
 		int nonce)
 	{
@@ -29,10 +29,13 @@ public class Block
 	}
 	
 	/**
-	 * Calculate the block hash for any given block. Returns null if the block is invalid
+	 * Calculate the block hash for any given block. Returns null if the block has an invalid format
 	 */
 	public static string? calculateBlockHash(Block block)
 	{
+		if (block.transactions is null || block.prevBlockHash is null || block.index < 0)
+			return null;
+		
 		string? transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
 		if (transactionsString is null)
 			return null;

@@ -18,4 +18,30 @@ public class UTxOut
 		this.address = address;
 		this.amount = amount;
 	}
+	
+	#region equality override
+	public override bool Equals(object? o)
+	{
+		if (o is null || o.GetType() != typeof(UTxOut))
+			return false;
+		UTxOut other = (UTxOut)o;
+
+		if (this.txOutId == other.txOutId && this.txOutIndex == other.txOutIndex && this.address == other.address &&
+		    this.amount == other.amount)
+			return true;
+
+		return false;
+	}
+
+	public static bool operator == (UTxOut b1, UTxOut b2)
+	{
+		return b1.Equals(b2);
+	}
+
+	public static bool operator != (UTxOut b1, UTxOut b2)
+	{
+		return !(b1 == b2);
+	}
+	
+	#endregion equality override
 }

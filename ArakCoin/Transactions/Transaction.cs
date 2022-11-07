@@ -65,7 +65,7 @@ public class Transaction
 	}
 	
 	/**
-	 * Given any container of transactions that satisfies the IEnumerable interface, return all of its TxIns
+	 * Given any container of transactions that implements the IEnumerable interface, return all of its TxIns
 	 */
 	public static List<TxIn> getTxInsFromTransactionContainer(IEnumerable<Transaction> txContainer)
 	{
