@@ -17,7 +17,7 @@ public class DataIntegrationTests
     //note that the Serialize class should test against this
     
     [Test]
-    public void testBlockSerialization()
+    public void TestBlockSerialization()
     {
         //Test 1: Create a block populated with transactions and serialize it. Test the deserialized block is equal
         //to it. Then append the deserialized block to the blockchain and assert its valid.
@@ -65,7 +65,7 @@ public class DataIntegrationTests
     }
 
     [Test]
-    public void testBlockchainSerialization()
+    public void TestBlockchainSerialization()
     {
         //Create a blockchain, mine some blocks. Include txes in some of them
         var bchain = new Blockchain();
@@ -96,7 +96,7 @@ public class DataIntegrationTests
     }
 
     [Test]
-    public void testMempoolSerialization()
+    public void TestMempoolSerialization()
     {
         //Mine some coins and create some valid txes, which should populate the mempool
         var bchain = new Blockchain();
@@ -179,9 +179,8 @@ public class DataIntegrationTests
     [Test]
     public void Temp()
     {
-        // var d = Storage.readJsonFromDisk("blockchain.json");
-        // var ds = Serialize.deserializeJsonToBlockchain(d);
-        // bool v = ds.isBlockchainValid();
-        // int a = 3;
+        
+        
+        
     }
 }

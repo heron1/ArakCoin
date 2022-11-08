@@ -206,8 +206,6 @@ public class BlockchainIntegration
 	public void TestInvalidBlocksRejected()
 	{
 		LogTestMsg("Testing TestInvalidBlocksRejected..");
-	
-		//TODO keep adding more invalid tests until final block structure determined. This includes testing data element
 		Assert.IsTrue(bchain.getLength() == 2);
 	
 		Block lastBlock = bchain.getLastBlock();

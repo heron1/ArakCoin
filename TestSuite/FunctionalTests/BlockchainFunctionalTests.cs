@@ -50,7 +50,7 @@ public class BlockchainFunctionalTests
 	 * hashpower).
 	 *
 	 * This functional test aims to test the Blockchain.establishWinningChain in a simulated real environment of
-	 * competing chains, but done locally only
+	 * competing chains where the chains are retrieved from serialized data, but done locally only
 	 */
 	[Test]
 	public void TestWinningChainComparisonFunctionally()
@@ -77,7 +77,7 @@ public class BlockchainFunctionalTests
 			{
 				//we now change protocol settings, and mine a fourth chain with greater length & hashpower
 				//than prior 3
-				Settings.DIFFICULTY_INTERVAL_BLOCKS++;
+				Settings.DIFFICULTY_INTERVAL_BLOCKS--;
 			}
 			Blockchain newChain = new Blockchain();
 			bchains.Add(newChain);
@@ -159,7 +159,7 @@ public class BlockchainFunctionalTests
 			}
 		}
 		
-		Settings.DIFFICULTY_INTERVAL_BLOCKS--; //set protocol back to the original one
+		Settings.DIFFICULTY_INTERVAL_BLOCKS++; //set protocol back to the original one
 		Assert.IsTrue(actualWinner.isBlockchainValid());
 		Assert.IsFalse(bchains.Last().isBlockchainValid());
 

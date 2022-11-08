@@ -1,11 +1,10 @@
 ﻿using ArakCoin.Transactions;
-using Newtonsoft.Json;
 
 namespace ArakCoin;
 
 /**
- * A wrapper class for serializing and deserializing data. Also performs some sanitization checking, but no validation.
- * Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
+ * A wrapper class for serializing and deserializing data. Also performs formatting checking, but no
+ * validation. Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
  */
 public static class Serialize
 {
@@ -43,7 +42,7 @@ public static class Serialize
         }
     }
     
-    //atempts to serialize the input blockchain into a json string. If this fails, returns null
+    //attempts to serialize the input blockchain into a json string. If this fails, returns null
     public static string? serializeBlockchainToJson(Blockchain bchain)
     {
         return JsonConvert.SerializeObject(bchain);

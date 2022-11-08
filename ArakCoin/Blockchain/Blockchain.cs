@@ -520,13 +520,7 @@ public class Blockchain
 
 		return winningChain;
 	}
-	
-	#region Blockchain Transaction Methods
-	
-	
-	#endregion
-	
-	
+
 	#region Blockchain Helper Methods
 	/**
 	 * Given the input block and blockchain, calculate the timestamp difference between that block and its predecessor.
