@@ -61,6 +61,22 @@ public static class Settings
 	 */
 	public static int minMinerFee = 0;
 
+	/**
+	 * The ipv4 address of this host for network communication.
+	 * Set this manually if the incorrect IP is being inferred from the Utilities.getLocalIpAddress() function
+	 */
+	public static string nodeIp = Utilities.getLocalIpAddress();
+
+	/**
+	 * The default port to use for network communication as a node
+	 */
+	public static int nodePort = 8000;
+
+	/**
+	 * Time out a network communication message send or receive after waiting this number of milliseconds
+	 */
+	public static int networkCommunicationTimeoutMs = 2000;
+
 	#endregion
 
 }

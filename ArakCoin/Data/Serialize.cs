@@ -3,7 +3,7 @@
 namespace ArakCoin;
 
 /**
- * A wrapper class for serializing and deserializing data. Also performs formatting checking, but no
+ * A wrapper class for serializing and deserializing data. Also performs format checking, but no
  * validation. Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
  */
 public static class Serialize

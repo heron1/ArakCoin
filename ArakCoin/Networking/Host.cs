@@ -5,8 +5,9 @@ namespace ArakCoin.Networking;
 
 /**
  * Class to represent a correctly formatted identifier for a network host, containing its ipv4 address and port.
- * Does not validate the host actually exists or is legal. Will throw an exception if instantiated with
- * invalid arguments. This class can be extended with additional fields in the future should they be needed.
+ * Performs format checking but does not validate the host actually exists or is legal.
+ * Will throw an exception if instantiated with invalid arguments. This class can be extended with
+ * additional fields in the future should they be needed.
  */
 public class Host
 {
@@ -15,11 +16,11 @@ public class Host
     
     public Host(string ip, int port)
     {
-        //sanitize ip
+        //ip format check
         if (!isIpFormatValid(ip))
             throw new ArgumentException("ip is invalid", nameof(ip));
         
-        //sanitize port
+        //port format check
         if (port < 0 || port > 65535)
             throw new ArgumentException("port is invalid", nameof(port));
         

@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Numerics;
 using System.Text;
 
@@ -34,8 +36,26 @@ public class Utilities
 		
 		return BigInteger.Pow(2, 4 * difficulty);
 	}
-	
 
+	/**
+	 * Sleep the calling thread for the given number of milliseconds
+	 */
+	public static void sleep(int milliseconds)
+	{
+		Thread.Sleep(milliseconds);
+	}
+
+	/**
+	 * Attempts to automatically find the local ipv4 address of this host from the first found NIC, and return it.
+	 */
+	public static string getLocalIpAddress()
+	{
+		return Dns.GetHostEntry(Dns.GetHostName())
+			.AddressList
+			.First(x => x.AddressFamily == AddressFamily.InterNetwork)
+			.ToString();
+	}
+	
 	/**
 	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere. This
 	 * implementation may change over time, but the same function can still be called.
