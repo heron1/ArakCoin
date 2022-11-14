@@ -1,4 +1,5 @@
-﻿using ArakCoin.Transactions;
+﻿using ArakCoin.Networking;
+using ArakCoin.Transactions;
 
 namespace ArakCoin;
 
@@ -68,11 +69,35 @@ public static class Serialize
     }
     
     //attempts to deserialize the input string to a mempool. If this fails, returns null
-    public static List<Transaction>? deserializeMempoolToJson(string jsonContainer)
+    public static List<Transaction>? deserializeJsonToMempool(string jsonContainer)
     {
         try
         {
             return JsonConvert.DeserializeObject<List<Transaction>>(jsonContainer);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public static string? serializeNetworkMessageToJson(NetworkMessage networkMessage)
+    {
+        try
+        {
+            return JsonConvert.SerializeObject(networkMessage);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public static NetworkMessage? deserializeJsonToNetworkMessage(string jsonNetworkMessage)
+    {
+        try
+        {
+            return JsonConvert.DeserializeObject<NetworkMessage>(jsonNetworkMessage);
         }
         catch
         {

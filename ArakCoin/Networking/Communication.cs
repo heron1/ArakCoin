@@ -11,6 +11,21 @@ namespace ArakCoin.Networking;
 public static class Communication
 {
     /**
+     * It's recommended the other methods are used to communicate with a host, however this function
+     * will allow the creation of a network stream given a host. Unlike the other methods in this class, the
+     * NetworkStream must be manually disposed of once the communication is finished.
+     */
+    public static NetworkStream createNetworkStreamWithHost(Host host)
+    {
+        var ipEndPoint = IPEndPoint.Parse(host.ToString());
+        using TcpClient client = new();
+        client.Connect(ipEndPoint);
+        NetworkStream stream = client.GetStream();
+
+        return stream;
+    }
+    
+    /**
      * Send a message through the given network stream that adheres to this blockchain's base communication protocol.
      * Returns true if the message was successfully sent, false otherwise
      */
@@ -18,7 +33,10 @@ public static class Communication
     {
         //the input message cannot contain the newline char, as this signifies end of the message as per the protocol
         if (message.Contains('\n'))
+        {
+            Utilities.log($"Attempted to send message containing illegal newline char, message: {message}");
             return false;
+        }
 
         //add the newline char to signify end of the message
         message += "\n";
@@ -37,13 +55,16 @@ public static class Communication
             if (timeoutTask.IsCompleted && !asyncStreamWrite.IsCompleted)
                 return false;
         }
-        catch (IOException e) //stream is closed
+        catch (Exception e) when (e.InnerException is SocketException or IOException) //stream is closed
         {
             return false;
         }
+        catch (Exception e) //unknown exception, log for investigation
+        {
+            Utilities.exceptionLog(e.Message);
+            return false;
+        }
         
-        //todo unit tests - test what happens if stream dies during the WriteAsync - catch exceptions - ensure
-        //full message is sent
         return true;
     }
 
@@ -62,34 +83,43 @@ public static class Communication
         //then.
         var timeoutTask = Task.Delay(Settings.networkCommunicationTimeoutMs);
 
-        while (true) //keep reading the stream until sender indicates end of message, or timeout is reached
+        try
         {
-            //todo timeout wait? If timeout reached, return fail/false for communication - write failing unit test first
-            //todo (timeout check)
-            //read stream into buffer asynchronously
-            var asyncStreamRead = stream.ReadAsync(buffer, 0, buffer.Length);
-
-            //check whether the timeout task has completed. If it has, we return null
-            await Task.WhenAny(asyncStreamRead, timeoutTask);
-            if (timeoutTask.IsCompleted && !asyncStreamRead.IsCompleted)
-                return null;
-
-            //timeout not reached, so the completed task must be asyncStreamRead
-            bytesReceived = asyncStreamRead.Result; 
-            
-            if (buffer[bytesReceived - 1] == 10) //test for newline end of protocol communication special character
+            while (true) //keep reading the stream until sender indicates end of message, or timeout is reached
             {
-                //don't include the newline char which signifies the end of the message
-                receivedMsg.Append(Encoding.UTF8.GetString(buffer, 0, bytesReceived - 1));
-                break;
-            }
-            else
-            {
-                receivedMsg.Append(Encoding.UTF8.GetString(buffer, 0, bytesReceived));
+                //read stream into buffer asynchronously
+                var asyncStreamRead = stream.ReadAsync(buffer, 0, buffer.Length);
+
+                //check whether the timeout task has completed. If it has, we return null
+                await Task.WhenAny(asyncStreamRead, timeoutTask);
+                if (timeoutTask.IsCompleted && !asyncStreamRead.IsCompleted)
+                    return null;
+
+                //timeout not reached, so the completed task must be asyncStreamRead
+                bytesReceived = asyncStreamRead.Result;
+
+                if (buffer[bytesReceived - 1] == 10) //test for newline end of protocol communication special character
+                {
+                    //don't include the newline char which signifies the end of the message
+                    receivedMsg.Append(Encoding.UTF8.GetString(buffer, 0, bytesReceived - 1));
+                    break;
+                }
+                else
+                {
+                    receivedMsg.Append(Encoding.UTF8.GetString(buffer, 0, bytesReceived));
+                }
             }
         }
-
-        //todo unit tests - timeout, broken connection (catch exceptions)
+        catch (Exception e) when (e.InnerException is SocketException or IOException) //stream is closed
+        {
+            return null;
+        } 
+        catch (Exception e) //unknown exception, log for investigation
+        {
+            Utilities.exceptionLog(e.Message);
+            return null;
+        }
+        
         return receivedMsg.ToString();
     }
 
@@ -128,8 +158,5 @@ public static class Communication
             return null;
         }
     }
-
-  
-    
     
 }

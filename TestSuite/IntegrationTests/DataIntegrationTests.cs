@@ -119,7 +119,7 @@ public class DataIntegrationTests
         //now serialize and deserialize the mempool, assert it's identical to the local one
         string? serializedMempool = Serialize.serializeMempoolToJson(bchain.mempool);
         Assert.IsNotNull(serializedMempool);
-        List<Transaction> deserializedMempool = Serialize.deserializeMempoolToJson(serializedMempool);
+        List<Transaction> deserializedMempool = Serialize.deserializeJsonToMempool(serializedMempool);
         Assert.IsTrue(deserializedMempool.Count == bchain.mempool.Count);
         for (int i = 0; i < deserializedMempool.Count; i++)
         {
@@ -152,7 +152,7 @@ public class DataIntegrationTests
         Assert.IsNotNull(serializedMempool);
         Storage.writeJsonToDisk(serializedMempool, "mempool.json");
         string json = Storage.readJsonFromDisk("mempool.json");
-        List<Transaction> deserializedMempool = Serialize.deserializeMempoolToJson(json);
+        List<Transaction> deserializedMempool = Serialize.deserializeJsonToMempool(json);
         Assert.IsTrue(deserializedMempool.Count == bchain.mempool.Count);
         for (int i = 0; i < deserializedMempool.Count; i++)
         {

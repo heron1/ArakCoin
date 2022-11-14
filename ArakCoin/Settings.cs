@@ -77,6 +77,13 @@ public static class Settings
 	 */
 	public static int networkCommunicationTimeoutMs = 2000;
 
+	/**
+	 * The number of characters this node will allow for a valid ECHO request/response. Note: Changing the
+	 * default value may make this node deemed as a bad actor by other nodes, preventing potential transaction
+	 * and block sharing. It's recommended to leave it at the default value
+	 */
+	public static int echoCharLimit = 1000;
+
 	#endregion
 
 }
