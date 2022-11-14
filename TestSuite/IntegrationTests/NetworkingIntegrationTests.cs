@@ -11,9 +11,10 @@ namespace TestSuite.IntegrationTests;
 public class NetworkingIntegrationTests
 {
     /**
-     * Note these integration tests only test networking on the local machine. Functional tests testing external
-     * host-to-host communication exist in the FunctionalTests section, and require that a list of external hosts
-     * (at least 1) is provided. * //todo this - or rather make it as a manual test
+     * Note these integration tests only test networking on the local machine (both client and node reside locally).
+     * Functional tests testing external host-to-host communication exist in the FunctionalTests section,
+     * and require that a list of external hosts (at least 1) is provided. *
+     * //todo this - or rather make it as a manual test
      *
      * Note these tests cannot be run in parallel, and also the nodeListener must be
      * stopped at the end of each test. This is to ensure a networking socket is available for the next test. 
@@ -43,7 +44,7 @@ public class NetworkingIntegrationTests
         LogTestMsg("Testing TestNodeListenerLocallyErroneously..");
         
         //first create and start the node listener
-        NodeListener listener = new NodeListener();
+        NodeListenerServer listener = new NodeListenerServer();
         listener.startListeningServer();
         
         //Test 1) test client can send a simple message to the node that doesn't adhere to the Message Protocol,
@@ -112,7 +113,6 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(networkMessage.rawMessage == sendMsg);
         
         
-        
         //each test must stop the listening server
         listener.stopListeningServer();
     }
@@ -125,7 +125,7 @@ public class NetworkingIntegrationTests
         LogTestMsg("Testing TestNodeListenerLocally..");
         
         //create a listener as the node, and start it
-        NodeListener listener = new NodeListener();
+        NodeListenerServer listener = new NodeListenerServer();
         listener.startListeningServer();
         
         //attempt to send a simple message as the client to the nodeListener. Assert same message received back
@@ -148,18 +148,123 @@ public class NetworkingIntegrationTests
         for (int i = 0; i < 1000; i++)
             sentMsg += "asdaskljd aksldj lakds ";
         sentMsg += "end";
-        networkMessage = new NetworkMessage(MessageTypeEnum.ECHO, sentMsg);
-        resp = await Communication.communicateWithNode(networkMessage.ToString(), host);
+        var sendNetworkMessage = new NetworkMessage(MessageTypeEnum.ECHO, sentMsg);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
         Assert.IsNotNull(resp);
-        networkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
-        Assert.IsNotNull(networkMessage);
-        Assert.IsTrue(networkMessage.messageTypeEnum == MessageTypeEnum.ERROR);
+        var receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsNotNull(receivedNetworkMessage);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.ERROR);
+        
+        //GETCHAIN test 1 (retrieve an empty blockchain)
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETCHAIN);
+        Blockchain? receivedChain = Serialize.deserializeJsonToBlockchain(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedChain);
+        Assert.IsTrue(receivedChain.getLength() == 0);
+        Assert.IsTrue(receivedChain.isBlockchainValid());
+        
+        //GETCHAIN test 2 (have node mine some blocks, then the client can request this chain)
+        Blockchain bchain = new Blockchain();
+        for (int i = 0; i < 10; i++) //mine 10 blocks
+        {
+            BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        }
+        ArakCoin.Global.masterChain = bchain; //set this as the node's main chain
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host); //request the chain
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETCHAIN);
+        receivedChain = Serialize.deserializeJsonToBlockchain(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedChain);
+        Assert.IsTrue(receivedChain.getLength() == 10);
+        Assert.IsTrue(receivedChain.isBlockchainValid());
+        
+        //GETBLOCK test (client retrieves the 7th block from node, assert it's the right one retrieved)
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETBLOCK, "7");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETBLOCK);
+        Block receivedBlock = Serialize.deserializeJsonToBlock(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedBlock.calculateBlockHash()); //ensure block is valid
+        Assert.IsTrue(receivedBlock.index == 7);
 
+        //GETBLOCK test fail (client passes an invalid message for the block request)
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETBLOCK, "7a");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.ERROR);
+        
+        //Note: The below two tests will be missing a sendingNode origin, which is useful to be included by a client if
+        //it is also a node, and sending a next valid block. Remote node communication will have this field populated
+        //however in a functional test, not here in these local integration tests.
+        
+        //NEXTBLOCK test - simulate client mining a next valid block and sending it to the node.
+        //                 After this is done, the client should request the blockchain from the node and assert
+        //                 that this block was indeed added.
+        Block nextValidBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Global.masterChain);
+        string serializedValidBlock = Serialize.serializeBlockToJson(nextValidBlock);
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedValidBlock);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.NEXTBLOCK);
+        //now request the chain, and assert it includes the sent valid block
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETCHAIN);
+        receivedChain = Serialize.deserializeJsonToBlockchain(receivedNetworkMessage.rawMessage);
+        Assert.IsTrue(receivedChain.getLastBlock() == nextValidBlock);
+        Assert.IsTrue(receivedChain.isBlockchainValid());
+        
+        //NEXTBLOCK test fail - same as above test except the sent block is invalid. Assert it wasn't added
+        int blockChainLength = ArakCoin.Global.masterChain.getLength();
+        Block invalidNextBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Global.masterChain);
+        invalidNextBlock.timestamp = 1; //invalidate the block
+        string serializedInvalidBlock = Serialize.serializeBlockToJson(invalidNextBlock);
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedInvalidBlock);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.ERROR);
+        //now request the chain, and assert it hasn't been changed
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETCHAIN);
+        receivedChain = Serialize.deserializeJsonToBlockchain(receivedNetworkMessage.rawMessage);
+        Assert.IsFalse(receivedChain.getLastBlock() == invalidNextBlock); //invalid block shouldn't have been added
+        Assert.IsTrue(blockChainLength == ArakCoin.Global.masterChain.getLength());
+        Assert.IsTrue(receivedChain.isBlockchainValid());
+        
+        //NEXTBLOCK test - ahead by 2, but no node sent in the message. So this node cannot do anything to verify
+        //                  whether that block is valid or not
+        //receivedChain is a copy of the node's blockchain, but not a reference to it. We will mine it to get ahead
+        BlockFactory.mineNextBlockAndAddToBlockchain(receivedChain);
+        BlockFactory.mineNextBlockAndAddToBlockchain(receivedChain); //now 2 blocks ahead
+        Block skippedBlock = receivedChain.getLastBlock();
+        string serializedskippedBlock = Serialize.serializeBlockToJson(skippedBlock);
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedskippedBlock);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.INFO);
         
         //each test must stop the listening server
         listener.stopListeningServer();
 
     }
+    
+    //todo - test client/server mining and sending each other same chain,and different chains. Test both converge
+    //to the consensus chain
 
     [Test]
     public void Temp()

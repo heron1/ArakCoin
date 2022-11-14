@@ -21,7 +21,7 @@ public static class HostsManager
     }
 
     /**
-     * Attempts to add the given node to memory, and write it to the hostsfile on disk as well.
+     * Adds the given node to memory if it doesn't yet exist, and writes it to the hostsfile on disk as well.
      * Returns whether the node was succesfully written to the hostsfile or not
      */
     public static bool addNode(Host node)

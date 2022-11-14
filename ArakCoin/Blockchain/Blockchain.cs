@@ -16,8 +16,8 @@ public class Blockchain
 	
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
+	public readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
 
-	
 	/**
 	 * Iteratively searches the blockchain in O(n) for the block node with the given index. If not found, returns null
 	 * The iterative search begins from the last node, and moves toward the first node, since we are more likely to
@@ -45,12 +45,15 @@ public class Blockchain
 	 */
 	public void replaceBlockchain(Blockchain newChain, bool replaceMemPool = true)
 	{
-		this.blockchain = newChain.blockchain;
-		this.currentDifficulty = newChain.currentDifficulty;
-		this.uTxOuts = newChain.uTxOuts;
-		
-		if (replaceMemPool)
-			this.mempool = newChain.mempool;
+		lock (blockChainLock)
+		{
+			this.blockchain = newChain.blockchain;
+			this.currentDifficulty = newChain.currentDifficulty;
+			this.uTxOuts = newChain.uTxOuts;
+
+			if (replaceMemPool)
+				this.mempool = newChain.mempool;
+		}
 	}
 
 	/**
@@ -70,16 +73,19 @@ public class Blockchain
 	 */
 	public bool addValidBlock(Block block)
 	{
-		if (!isNewBlockValid(block))
-			return false;
+		lock(blockChainLock)
+		{
+			if (!isNewBlockValid(block))
+				return false;
 
-		if (!updateUTxOuts(block))
-			return false;
-		
-		forceAddBlock(block);
-		updateDifficulty();
+			if (!updateUTxOuts(block))
+				return false;
 
-		return true;
+			forceAddBlock(block);
+			updateDifficulty();
+
+			return true;
+		}
 	}
 
 	//update the unspent txouts within the given transactions
@@ -293,9 +299,9 @@ public class Blockchain
 	}
 
 	/**
-	 * We check whether the timestamp of the input block is valid with respect to whether or not it can be appended as the
-	 * new block to this blockchain, based upon this hosts own local time. If it is, we return true, otherwise false.
-	 * Note that if the blockchain is empty, this always returns true, provided the timestamp is legal
+	 * We check whether the timestamp of the input block is valid with respect to whether or not it can be appended as
+	 * the new block to this blockchain, based upon this hosts own local time. If it is, we return true, otherwise
+	 * false. Note that if the blockchain is empty, this always returns true, provided the timestamp is legal
 	 * 
 	 * Note the DIFFERING_TIME_ALLOWANCE variable in Settings determines how much leeway (in seconds) is allowed
 	 */
@@ -324,49 +330,52 @@ public class Blockchain
 	 */
 	public static bool isBlockchainValid(Blockchain chain)
 	{
-		LinkedListNode<Block>? blockNode = chain.blockchain.First;
-		
-		// empty chain must have a null first element
-		if (chain.getLength() == 0)
+		lock(chain.blockChainLock)
 		{
-			if (blockNode is not null)
+			LinkedListNode<Block>? blockNode = chain.blockchain.First;
+
+			// empty chain must have a null first element
+			if (chain.getLength() == 0)
+			{
+				if (blockNode is not null)
+					return false;
+
+				return true;
+			}
+
+			//rebuild the chain, ensure each added block is permissible
+			Blockchain rebuildChain = new Blockchain();
+
+			while (blockNode is not null)
+			{
+				bool success = rebuildChain.addValidBlock(blockNode.Value);
+				if (!success)
+					return false;
+
+				blockNode = blockNode.Next;
+			}
+
+			//assert difficulty is correct
+			if (rebuildChain.currentDifficulty != chain.currentDifficulty)
+				return false;
+
+			//assert the uTxOuts in the rebuild chain are identical to input chain
+			if (rebuildChain.uTxOuts.Length != chain.uTxOuts.Length)
+				return false;
+			for (int i = 0; i < rebuildChain.uTxOuts.Length; i++)
+			{
+				if (rebuildChain.uTxOuts[i] != chain.uTxOuts[i])
+					return false;
+			}
+
+			//assert total circulating coin supply is valid
+			long expectedSupply = (rebuildChain.getLength() - 1) * Settings.BLOCK_REWARD;
+			long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
+			if (expectedSupply != actualSupply)
 				return false;
 
 			return true;
 		}
-		
-		//rebuild the chain, ensure each added block is permissible
-		Blockchain rebuildChain = new Blockchain();
-
-		while (blockNode is not null)
-		{
-			bool success = rebuildChain.addValidBlock(blockNode.Value);
-			if (!success)
-				return false;
-
-			blockNode = blockNode.Next;
-		}
-		
-		//assert difficulty is correct
-		if (rebuildChain.currentDifficulty != chain.currentDifficulty)
-			return false;
-		
-		//assert the uTxOuts in the rebuild chain are identical to input chain
-		if (rebuildChain.uTxOuts.Length != chain.uTxOuts.Length)
-			return false;
-		for (int i = 0; i < rebuildChain.uTxOuts.Length; i++)
-		{
-			if (rebuildChain.uTxOuts[i] != chain.uTxOuts[i])
-				return false;
-		}
-		
-		//assert total circulating coin supply is valid
-		long expectedSupply = (rebuildChain.getLength() - 1) * Settings.BLOCK_REWARD;
-		long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
-		if (expectedSupply != actualSupply)
-			return false;
-
-		return true;
 	}
 	
 	/**
@@ -464,6 +473,25 @@ public class Blockchain
 	public bool validateMemPool()
 	{
 		return validateMemPool(this.mempool, this.uTxOuts);
+	}
+
+	/**
+	 * Given the input mempool, remove any transactions in it that are no longer valid with respect to the given
+	 * uTxOuts
+	 */
+	public static List<Transaction> sanitizeMempool(List<Transaction> mempool, UTxOut[] uTxOuts)
+	{
+		//todo this
+		return null;
+	}
+
+	/**
+	 * Sanitize the locally stored mempool - remove any transactions in it that are no longer valid with respect
+	 * to this blockchain
+	 */
+	public List<Transaction> sanitizeMempool()
+	{
+		return sanitizeMempool(this.mempool, this.uTxOuts);
 	}
 
 	//TODO - this is proposed advanced functionality. If time permits, then given a list of input mempools, retrieve the txes

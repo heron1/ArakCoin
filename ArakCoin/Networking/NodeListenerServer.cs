@@ -15,7 +15,7 @@ namespace ArakCoin.Networking;
  * Note this class implements the IDisposable interface to clean up any used networking and thread resources upon
  * destruction if used within a "using" statement, or if the "Dispose" method is manually called.
  */
-public class NodeListener : IDisposable
+public class NodeListenerServer : IDisposable
 {
     private Task listeningEntryPointTask;
     private CancellationTokenSource cancellationTokenSource;
@@ -99,7 +99,7 @@ public class NodeListener : IDisposable
     {
         NetworkMessage? networkMessage = Serialize.deserializeJsonToNetworkMessage(receivedMsg);
         if (networkMessage is null)
-            return createErrorNetworkMessage("failed to receive valid NetworkMessage object");
+            return createErrorNetworkMessage("failed to receive valid serialized NetworkMessage object");
 
         switch (networkMessage.messageTypeEnum)
         {
@@ -107,7 +107,41 @@ public class NodeListener : IDisposable
                 if (networkMessage.rawMessage.Length > Settings.echoCharLimit)
                     return createErrorNetworkMessage($"ECHO requests must be {Settings.echoCharLimit} chars");
                 return new NetworkMessage(MessageTypeEnum.ECHO, networkMessage.rawMessage);
-            
+            case MessageTypeEnum.GETCHAIN:
+                var serializedBlockchain = Serialize.serializeBlockchainToJson(Global.masterChain);
+                if (serializedBlockchain is null)
+                    return createErrorNetworkMessage("Error retrieving local blockchain");
+                return new NetworkMessage(MessageTypeEnum.GETCHAIN, serializedBlockchain);
+            case MessageTypeEnum.GETBLOCK:
+                int blockIndex;
+                if (!Int32.TryParse(networkMessage.rawMessage, out blockIndex))
+                    return createErrorNetworkMessage("Invalid message content for block index");
+                Block? requestedBlock = Global.masterChain.getBlockByIndex(blockIndex);
+                if (requestedBlock is null)
+                    return createErrorNetworkMessage($"Block with index {blockIndex} does not " +
+                                                     $"exist in local blockchain");
+                var serializedBlock = Serialize.serializeBlockToJson(requestedBlock);
+                if (serializedBlock is null)
+                    return createErrorNetworkMessage($"Local node error serializing block occurred");
+                return new NetworkMessage(MessageTypeEnum.GETBLOCK, serializedBlock);
+            case MessageTypeEnum.NEXTBLOCK:
+                Block? candidateNextBlock = Serialize.deserializeJsonToBlock(networkMessage.rawMessage);
+                if (candidateNextBlock is null || candidateNextBlock.calculateBlockHash() is null)
+                    return createErrorNetworkMessage($"Invalid block received");
+                if (Global.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
+                    return new NetworkMessage(MessageTypeEnum.NEXTBLOCK, "");
+                if (candidateNextBlock.index > Global.masterChain.getLength() + 1) 
+                    //Received block is a candidate ahead block. Execute new background task to handle whether
+                    //another blockchain can be found to replace this one
+                {
+                    Task.Run(() => handleAheadCandidateNextBlock(networkMessage));
+                    return new NetworkMessage(MessageTypeEnum.INFO,
+                        $"This chain's last block has an index of {Global.masterChain.getLength()} but the" +
+                        $"received block has a higher index of {candidateNextBlock.index}. Node will check for a " +
+                        $"potential replacement chain");
+                }
+                return createErrorNetworkMessage($"Invalid next block received");
+
             default:
                 return createErrorNetworkMessage();
 
@@ -120,6 +154,48 @@ public class NodeListener : IDisposable
     {
         return new NetworkMessage(MessageTypeEnum.ERROR, msg);
     }
+
+    /**
+     * If a block is received with an index 2 or higher than the current last block on this node's chain, then it's
+     * unknown if the block can be legally appended if the missing block(s) in-between are found. Therefore,
+     * this node will attempt to retrieve the corresponding chain from the sender and see if that chain is a candidate
+     * to replace this chain
+     */
+    private async Task handleAheadCandidateNextBlock(NetworkMessage networkMessage)
+    {
+        //todo this - and functional testing. Attempt with another local node on a different port as well as a
+        //remote node
+        if (networkMessage.sendingNode is null || !networkMessage.sendingNode.validateHostFormatting())
+            return; //if the sending client didn't provide a node we can check for a replacement blockchain,
+                    //then we cannot proceed any further
+        //send a message to the provided node in the networkMessage requesting the node's blockchain
+        NetworkMessage sendMsg = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
+        string serializedMsg = Serialize.serializeNetworkMessageToJson(sendMsg);
+        string? resp = await Communication.communicateWithNode(serializedMsg, networkMessage.sendingNode);
+        if (resp is null) //node communication failure, we cannot proceed
+            return;
+        NetworkMessage? recvMsg = Serialize.deserializeJsonToNetworkMessage(resp);
+        if (recvMsg is null)
+            return;
+        if (recvMsg.messageTypeEnum != MessageTypeEnum.GETCHAIN)
+            return;
+        Blockchain? candidateReplacementChain = Serialize.deserializeJsonToBlockchain(recvMsg.rawMessage);
+        if (candidateReplacementChain is null)
+            return;
+        Blockchain? winningChain = Blockchain.establishWinningChain(new List<Blockchain>(2)
+        {
+            Global.masterChain,
+            candidateReplacementChain
+        });
+        if (winningChain is null)
+            return;
+        if (Global.masterChain != winningChain)
+        {
+            //the retrieved chain is in fact ahead of our own local chain. We should now replace our chain with it
+            Global.masterChain.replaceBlockchain(candidateReplacementChain);
+        }
+    }
+    
 
     /**
      * Correctly close and dispose of the network connection and used threads when this class is disposed

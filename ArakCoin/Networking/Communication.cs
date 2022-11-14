@@ -97,6 +97,8 @@ public static class Communication
 
                 //timeout not reached, so the completed task must be asyncStreamRead
                 bytesReceived = asyncStreamRead.Result;
+                if (bytesReceived == 0) //no bytes being received indicates an invalid read
+                    return null;
 
                 if (buffer[bytesReceived - 1] == 10) //test for newline end of protocol communication special character
                 {
