@@ -99,7 +99,7 @@ public class NodeListener : IDisposable
     {
         NetworkMessage? networkMessage = Serialize.deserializeJsonToNetworkMessage(receivedMsg);
         if (networkMessage is null)
-            return createErrorNetworkMessage();
+            return createErrorNetworkMessage("failed to receive valid NetworkMessage object");
 
         switch (networkMessage.messageTypeEnum)
         {
@@ -107,6 +107,7 @@ public class NodeListener : IDisposable
                 if (networkMessage.rawMessage.Length > Settings.echoCharLimit)
                     return createErrorNetworkMessage($"ECHO requests must be {Settings.echoCharLimit} chars");
                 return new NetworkMessage(MessageTypeEnum.ECHO, networkMessage.rawMessage);
+            
             default:
                 return createErrorNetworkMessage();
 

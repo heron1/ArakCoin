@@ -28,6 +28,20 @@ public class Host
         this.port = port;
     }
 
+    //returns whether this host has valid formatting or not
+    public bool validateHostFormatting()
+    {
+        //ip format check
+        if (!isIpFormatValid(ip))
+            return false;
+        
+        //port format check
+        if (port < 0 || port > 65535)
+            return false;
+
+        return true;
+    }
+
     public static bool isIpFormatValid(string ip)
     {
         //this is my own regex as online solutions I found didn't seem to properly validate the IP. Also 
@@ -56,5 +70,31 @@ public class Host
     {
         return $"{this.ip}:{this.port}";
     }
+    
+    
+    #region equality override
+    public override bool Equals(object? o)
+    {
+        if (o is null || o.GetType() != typeof(Host))
+            return false;
+        Host other = (Host)o;
+
+        if (this.ip == other.ip && this.port == other.port)
+            return true;
+
+        return false;
+    }
+
+    public static bool operator == (Host t1, Host t2)
+    {
+        return t1.Equals(t2);
+    }
+
+    public static bool operator != (Host t1, Host t2)
+    {
+        return !(t1 == t2);
+    }
+
+    #endregion equality override
     
 }

@@ -4,8 +4,8 @@ using ArakCoin.Transactions;
 namespace ArakCoin;
 
 /**
- * A wrapper class for serializing and deserializing data. Also performs format checking, but no
- * validation. Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
+ * A wrapper class for serializing and deserializing data. Also performs format checking.
+ * Method signatures should remain unchanged regardless of underlying implementation (currently Newtonsoft)
  */
 public static class Serialize
 {
@@ -103,5 +103,38 @@ public static class Serialize
         {
             return null;
         }
+    }
+
+    public static string? serializeHostsToJson(List<Host> hosts)
+    {
+        try
+        {
+            return JsonConvert.SerializeObject(hosts);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public static List<Host>? deserializeJsonToHosts(string jsonHosts)
+    {
+        List<Host> hostList;
+        try
+        {
+            hostList = JsonConvert.DeserializeObject<List<Host>>(jsonHosts);
+        }
+        catch
+        {
+            return null;
+        }
+
+        foreach (var host in hostList)
+        {
+            if (!host.validateHostFormatting())
+                return null;
+        }
+
+        return hostList;
     }
 }
