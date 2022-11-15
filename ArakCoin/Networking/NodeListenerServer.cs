@@ -19,7 +19,8 @@ public class NodeListenerServer : IDisposable
 {
     private Task listeningEntryPointTask;
     private CancellationTokenSource cancellationTokenSource;
-    private bool isRunning = false;
+    private bool isRunning; //synchronous entry-point to set this class to a running/non-running state
+    private bool connectionActive; //asynchronous point that thread sets when the connection is actually active
 
     public void startListeningServer()
     {
@@ -31,6 +32,15 @@ public class NodeListenerServer : IDisposable
         //create a new cancellation token source and a new task to run the entry point function loop
         cancellationTokenSource = new CancellationTokenSource();
         listeningEntryPointTask = Task.Run(listeningEntryPoint);
+        var timeoutTask = Task.Delay(1000); //timeout if thread doesn't set connection active
+        
+        while (!connectionActive) //wait until the async task sets the connection as active before returning
+        {
+            if (timeoutTask.IsCompleted)
+                throw new Exception("Failed to start listening server before timeout reached");
+            Utilities.sleep(10); //mini-sleep to prevent CPU spin
+        }
+
     }
 
     public void stopListeningServer()
@@ -59,6 +69,7 @@ public class NodeListenerServer : IDisposable
         {
             try
             {
+                connectionActive = true;
                 while (!token.IsCancellationRequested)
                 {
                     using TcpClient handler = await listener.AcceptTcpClientAsync(token);
@@ -84,6 +95,7 @@ public class NodeListenerServer : IDisposable
             finally
             {
                 listener.Stop();
+                connectionActive = false;
             }
         });
 
@@ -146,13 +158,29 @@ public class NodeListenerServer : IDisposable
                 if (serializedMempool is null)
                     return createErrorNetworkMessage("Error retrieving local mempool");
                 return new NetworkMessage(MessageTypeEnum.GETMEMPOOL, serializedMempool);
-
+            case MessageTypeEnum.GETNODES:
+                var serializedNodes = Serialize.serializeHostsToJson(HostsManager.getNodes());
+                if (serializedNodes is null)
+                    return createErrorNetworkMessage("Error retrieving nodes list");
+                return new NetworkMessage(MessageTypeEnum.GETNODES, serializedNodes);
+            case MessageTypeEnum.REGISTERNODE:
+                if (networkMessage.sendingNode is null)
+                    return createErrorNetworkMessage("No node received");
+                if (!networkMessage.sendingNode.validateHostFormatting())
+                    return createErrorNetworkMessage($"Received node" +
+                                                     $" \"{networkMessage.sendingNode.ToString()}\" has " +
+                                                     $"invalid formatting");
+                bool success = HostsManager.addNode(networkMessage.sendingNode);
+                string rawMsg;
+                if (success)
+                    rawMsg = $"Added {networkMessage.sendingNode} to hosts file";
+                else
+                    rawMsg = $"Node add failed (might already exist in local hostsfile):" +
+                             $" {networkMessage.sendingNode.ToString()}";
+                return new NetworkMessage(MessageTypeEnum.REGISTERNODE, rawMsg);
             default:
                 return createErrorNetworkMessage();
-
         }
-
-        //todo all processing for response
     }
 
     private NetworkMessage createErrorNetworkMessage(string msg = "")

@@ -13,6 +13,12 @@ public static class Serialize
     //both for serialization and deserialization
     //todo remaining - blockchain formatting
     //todo remaining - mempool formatting
+
+    static Serialize()
+    {
+        //fix DOS exploit in Newtonsoft
+        JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 }; 
+    }
     
     //attempts to serialize the input block into a json string. If this fails, returns null
     public static string? serializeBlockToJson(Block block)
@@ -103,6 +109,22 @@ public static class Serialize
         {
             return null;
         }
+    }
+    
+    public static string? serializeHostToJson(Host host)
+    {
+        return serializeHostsToJson(new List<Host>(1) { host });
+    }
+
+    public static Host? deserializeJsonToHost(string jsonHost)
+    {
+        var hosts = deserializeJsonToHosts(jsonHost);
+        if (hosts is null)
+            return null;
+        if (hosts.Count != 1)
+            return null;
+
+        return hosts[0];
     }
 
     public static string? serializeHostsToJson(List<Host> hosts)

@@ -11,8 +11,8 @@ namespace ArakCoin.Networking;
  */
 public class Host
 {
-    public string ip;
-    public int port;
+    public readonly string ip;
+    public readonly int port;
     
     public Host(string ip, int port)
     {

@@ -290,7 +290,39 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Global.masterChain.uTxOuts));
         //this is our main assertion for this part:
         Assert.IsTrue(tx == receivedMempool[0]);
+        Assert.IsTrue(ArakCoin.Global.masterChain.mempool.SequenceEqual(receivedMempool));
         
+        //GETNODES test - retrieve nodes list from this node as a client, assert operation succeeds
+        //add at least 1 P2P node to this node if it doesn't already exist
+        HostsManager.addNode(new Host("1.1.1.1", 9000)); //some random but correctly formatted host details
+        Assert.IsTrue(HostsManager.getNodes().Contains(new Host("1.1.1.1", 9000)));
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETNODES, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETNODES);
+        var receivedNodes = Serialize.deserializeJsonToHosts(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedNodes);
+        Assert.IsTrue(HostsManager.getNodes().SequenceEqual(receivedNodes));
+
+        //REGISTERNODE test - test to register a valid node. Assert node added from GETNODES
+        Host registeredNode = new Host("2.2.2.2", 9000); //some random but correctly formatted host details
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.REGISTERNODE, "", registeredNode);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.REGISTERNODE);
+        //now retrieve nodes list, assert it was added
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETNODES, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETNODES);
+        receivedNodes = Serialize.deserializeJsonToHosts(receivedNetworkMessage.rawMessage);
+        Assert.Contains(registeredNode, receivedNodes);
+
+        
+
+
         
         //each test must stop the listening server
         listener.stopListeningServer();
@@ -301,9 +333,109 @@ public class NetworkingIntegrationTests
     //to the consensus chain (do this on distributed nodes in functional testing)
 
     [Test]
+    public async Task Temp1()
+    {
+        Host host = new Host(Settings.nodeIp, 8001);
+        var listener = new NodeListenerServer();
+        listener.startListeningServer();
+
+        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.ECHO, "hi from temp1");
+
+        for (int i = 0; i < 10; i++)
+            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Global.masterChain);
+        string? resp = null;
+        while (resp is null)
+        {
+            Utilities.sleep(10);
+            resp = await Communication.communicateWithNode(
+                Serialize.serializeNetworkMessageToJson(nm), host);
+        }
+
+        Utilities.sleep(2000);
+        
+        for (int i = 0; i < 5; i++)
+            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Global.masterChain);
+
+        while (true)
+        {
+            // var resp = await Communication.communicateWithNode(
+            //     Serialize.serializeNetworkMessageToJson(nm), host);
+            Utilities.sleep(100);
+        }
+    }
+    
+    [Test]
+    public async Task Temp2()
+    {
+        Host host = new Host(Settings.nodeIp, 8000);
+
+        Settings.nodePort = 8001;
+        var listener = new NodeListenerServer();
+        listener.startListeningServer();
+
+        Blockchain chain = new Blockchain();
+
+        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.GETCHAIN, "hi from temp2");
+        var resp = await Communication.communicateWithNode(
+            Serialize.serializeNetworkMessageToJson(nm), host);
+        var msg = Serialize.deserializeJsonToNetworkMessage(resp);
+        chain = Serialize.deserializeJsonToBlockchain(msg.rawMessage);
+        BlockFactory.mineNextBlockAndAddToBlockchain(chain);
+        Block lastBlock = chain.getLastBlock();
+        nm = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, Serialize.serializeBlockToJson(lastBlock)); 
+        resp = await Communication.communicateWithNode(
+            Serialize.serializeNetworkMessageToJson(nm), host);
+        string respOld = resp;
+        
+        for (int i = 0; i < 10; i++)
+            BlockFactory.mineNextBlockAndAddToBlockchain(chain);
+        ArakCoin.Global.masterChain = chain;
+        nm = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, Serialize.serializeBlockToJson(chain.getLastBlock()),
+            new Host(Settings.nodeIp, 8001));
+        resp = await Communication.communicateWithNode(
+            Serialize.serializeNetworkMessageToJson(nm), host);
+        
+        while (true)
+        {
+            Utilities.sleep(100);
+        }
+    }
+
+    [Test]
+    public async Task Temp3()
+    {
+        Host host = new Host(Settings.nodeIp, 8000);
+
+        Settings.nodePort = 8001;
+        var listener = new NodeListenerServer();
+        listener.startListeningServer();
+        
+        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.GETCHAIN, "hi from temp2");
+        var resp = await Communication.communicateWithNode(
+            Serialize.serializeNetworkMessageToJson(nm), host);
+    }
+    
+
+    [Test]
     public void Temp()
     {
+        var listener = new NodeListenerServer();
+        listener.startListeningServer();
         
+        Settings.nodePort = 8001;
+        var listener2 = new NodeListenerServer();
+        listener2.startListeningServer();
+
+        Settings.nodePort = 8002;
+        var listener3 = new NodeListenerServer();
+        listener3.startListeningServer();
+        
+        while (true)
+            Utilities.sleep(100);
+        int b = 3;
+        int c = 4;
+        
+
     }
     
 }

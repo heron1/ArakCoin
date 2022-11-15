@@ -1,4 +1,7 @@
-﻿namespace ArakCoin
+﻿using System.Net;
+using System.Net.Sockets;
+
+namespace ArakCoin
 {
 	internal class Program
 	{
