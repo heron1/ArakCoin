@@ -141,6 +141,11 @@ public class NodeListenerServer : IDisposable
                         $"potential replacement chain");
                 }
                 return createErrorNetworkMessage($"Invalid next block received");
+            case MessageTypeEnum.GETMEMPOOL:
+                var serializedMempool = Serialize.serializeMempoolToJson(Global.masterChain.mempool);
+                if (serializedMempool is null)
+                    return createErrorNetworkMessage("Error retrieving local mempool");
+                return new NetworkMessage(MessageTypeEnum.GETMEMPOOL, serializedMempool);
 
             default:
                 return createErrorNetworkMessage();

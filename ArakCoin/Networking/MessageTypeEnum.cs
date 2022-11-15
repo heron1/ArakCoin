@@ -15,5 +15,8 @@ public enum MessageTypeEnum
                //If the next block is more than 1 index ahead of the local chain, then it's unknown if the block will
                //be appended by the node, as it may need to request the full chain separately to see if the block is
                //ahead or not on another valid chain. This will be indicated in an INFO message instead
+    GETMEMPOOL, //client request to retrieve this node's mempool. Client message content is ignored
+    GETNODES,
+    REGISTERNODE,
     
 }

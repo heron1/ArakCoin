@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using ArakCoin;
 using ArakCoin.Networking;
+using ArakCoin.Transactions;
 
 namespace TestSuite.IntegrationTests;
 
@@ -25,6 +26,8 @@ public class NetworkingIntegrationTests
     public void Setup()
     {
         Settings.nodePublicKey = testPublicKey;
+        Settings.BLOCK_REWARD = 20;
+        Settings.minMinerFee = 0;
         Settings.networkCommunicationTimeoutMs = 500;
         Settings.echoCharLimit = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);
@@ -258,13 +261,44 @@ public class NetworkingIntegrationTests
         receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
         Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.INFO);
         
+        //GETMEMPOOL test (empty mempool)
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETMEMPOOL, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETMEMPOOL);
+        var receivedMempool = Serialize.deserializeJsonToMempool(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedMempool);
+        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Global.masterChain.uTxOuts));
+        
+        //GETMEMPOOL test (mempool with a valid tx)
+        //add a valid tx to the node's mempool
+        var tx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
+        {
+            new TxOut(Global.testPublicKey, 10)
+        }, Global.testPrivateKey, ArakCoin.Global.masterChain);
+        //now retrieve the mempool from the node as a client, and assert its tx is the same one as the one created
+        //in addition to asserting the mempool is valid
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETMEMPOOL, "");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETMEMPOOL);
+        receivedMempool = Serialize.deserializeJsonToMempool(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedMempool);
+        Assert.IsTrue(receivedMempool.Count == 1);
+        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Global.masterChain.uTxOuts));
+        //this is our main assertion for this part:
+        Assert.IsTrue(tx == receivedMempool[0]);
+        
+        
         //each test must stop the listening server
         listener.stopListeningServer();
 
     }
     
     //todo - test client/server mining and sending each other same chain,and different chains. Test both converge
-    //to the consensus chain
+    //to the consensus chain (do this on distributed nodes in functional testing)
 
     [Test]
     public void Temp()

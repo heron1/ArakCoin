@@ -16,7 +16,7 @@ public class Blockchain
 	
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
-	public readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
+	private readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
 
 	/**
 	 * Iteratively searches the blockchain in O(n) for the block node with the given index. If not found, returns null
@@ -43,7 +43,7 @@ public class Blockchain
 	/**
 	 * Replace the current blockchain with the input one. This does not test to see if it's valid
 	 */
-	public void replaceBlockchain(Blockchain newChain, bool replaceMemPool = true)
+	public void replaceBlockchain(Blockchain newChain, bool overwriteMempool = true)
 	{
 		lock (blockChainLock)
 		{
@@ -51,8 +51,12 @@ public class Blockchain
 			this.currentDifficulty = newChain.currentDifficulty;
 			this.uTxOuts = newChain.uTxOuts;
 
-			if (replaceMemPool)
+			if (overwriteMempool)
 				this.mempool = newChain.mempool;
+			else
+			{
+				sanitizeMempool(); //mutate current mempool so that it's valid with the replaced chain
+			}
 		}
 	}
 
@@ -481,17 +485,22 @@ public class Blockchain
 	 */
 	public static List<Transaction> sanitizeMempool(List<Transaction> mempool, UTxOut[] uTxOuts)
 	{
-		//todo this
-		return null;
+		var newPool = new List<Transaction>();
+		foreach (var tx in mempool)
+			if (Transaction.isValidTransaction(tx, uTxOuts))
+				newPool.Add(tx);
+		
+		//todo unit/integration tests for this
+		return newPool;
 	}
 
 	/**
 	 * Sanitize the locally stored mempool - remove any transactions in it that are no longer valid with respect
 	 * to this blockchain
 	 */
-	public List<Transaction> sanitizeMempool()
+	public void sanitizeMempool()
 	{
-		return sanitizeMempool(this.mempool, this.uTxOuts);
+		this.mempool = sanitizeMempool(this.mempool, this.uTxOuts);
 	}
 
 	//TODO - this is proposed advanced functionality. If time permits, then given a list of input mempools, retrieve the txes
