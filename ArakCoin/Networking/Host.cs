@@ -47,7 +47,7 @@ public class Host
         //this is my own regex as online solutions I found didn't seem to properly validate the IP. Also 
         //using the native IPAddress.Parse(ip) method results in invalid ips being parsed. This will require
         //testing to see if it works in all scenarios. Alternatively a better online solution may be found
-        string pattern = @"^((?!0)[\d]{1,3}\.){3}(?!0)[\d]{1,3}$";
+        string pattern = @"^((?!0\d)[\d]{1,3}\.){3}(?!0\d)[\d]{1,3}$";
         //timeout match within 10ms to prevent a DOS string from being parsed
         var match = Regex.Matches(ip, pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(10));
         if (match.Count != 1) //assert a single match
