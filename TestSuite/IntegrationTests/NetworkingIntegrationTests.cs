@@ -30,6 +30,8 @@ public class NetworkingIntegrationTests
         Settings.minMinerFee = 0;
         Settings.echoCharLimit = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);
+
+        ArakCoin.Global.masterChain = new Blockchain();
     }
     
     [Test]
@@ -41,6 +43,8 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task TestLocalNodeListenerErroneously()
     {
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+
         //these tests will attempt to break the node listener in various ways using the lower level methods in the
         //Communication class
         LogTestMsg("Testing TestNodeListenerLocallyErroneously..");
@@ -117,11 +121,15 @@ public class NetworkingIntegrationTests
         
         //each test must stop the listening server
         listener.stopListeningServer();
+        
     }
     
     [Test]
     public async Task TestLocalNodeListenerResponses()
     {
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+
+
         //these tests will validate the responses received from the nodeListener are correct using the higher level
         //communicateWithnode function in the Communication class
         LogTestMsg("Testing TestNodeListenerLocally..");
@@ -325,116 +333,98 @@ public class NetworkingIntegrationTests
         
         //each test must stop the listening server
         listener.stopListeningServer();
+        
+        Utilities.sleep(5000);
+    }
 
+    //Test async mining on a single separate task
+    [Test]
+    public async Task TestMineBlocksAsync()
+    {
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+        
+        //perform this same test twice, so it's known async mining can be started & stopped repeatedly
+        for (int i = 0; i < 2; i++)
+        {
+            //begin async mining, retrievie cancellation token
+            var miningCancellationToken = AsyncTasks.mineBlocksAsync();
+
+            //sleep this thread to allow some async mining
+            while (ArakCoin.Global.masterChain.getLength() == 0)
+                Utilities.sleep(100);
+
+            //cancel the mining and retrieve the immediate chain length
+            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken);
+            int chainLength = ArakCoin.Global.masterChain.getLength();
+
+            //sleep this thread for 1 whole second, no mining should have taken place due to the cancellation
+            Utilities.sleep(1000);
+            Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == chainLength);
+            
+            //clear the chain and perform this test again
+            ArakCoin.Global.masterChain = new Blockchain();
+        }
+    }
+
+    //Test async mining on two separate tasks - this shouldn't result in mining parallelism due to the async mining
+    //lock
+    [Test]
+    public async Task TestConflictingMiningTasksAsync()
+    {
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+        
+        //begin async mining on one Task, retrievie cancellation token
+        var miningCancellationToken1 = AsyncTasks.mineBlocksAsync();
+        
+        //begin async mining on another Task, retrievie cancellation token
+        var miningCancellationToken2 = AsyncTasks.mineBlocksAsync();
+        
+        //sleep this thread to allow some async mining, then cancel both tasks with the global mining
+        //lock. Retrieve immediate chain length. The two competing mining threads should respect the global mining lock
+        //and not override one another, or this thread
+        while (ArakCoin.Global.masterChain.getLength() == 0)
+            Utilities.sleep(100);
+        int chainLength;
+        lock (ArakCoin.Global.asyncMiningLock)
+        {
+            //cancel both Tasks atomically (since these two tasks & this thread all respect the same lock)
+            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken1);
+            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken2);
+            
+            chainLength = ArakCoin.Global.masterChain.getLength();
+        }
+
+        //sleep this thread for 1 whole second, no mining should have taken place due to the cancellation
+        Utilities.sleep(1000);
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == chainLength);
+        
+        //repeat the above test, but this time leave one Task mining - async mining should continue
+        ArakCoin.Global.masterChain = new Blockchain();
+        miningCancellationToken1 = AsyncTasks.mineBlocksAsync();
+        miningCancellationToken2 = AsyncTasks.mineBlocksAsync();
+        while (ArakCoin.Global.masterChain.getLength() == 0)
+            Utilities.sleep(100);
+        lock (ArakCoin.Global.asyncMiningLock)
+        {
+            //this time cancel only one task
+            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken1);
+            chainLength = ArakCoin.Global.masterChain.getLength();
+        }
+        //we should be able to wait for a block mine from the other task
+        while (ArakCoin.Global.masterChain.getLength() == chainLength)
+            Utilities.sleep(100);
+
+        Assert.IsFalse(ArakCoin.Global.masterChain.getLength() == chainLength);
+        //cleanup remaining task
+        AsyncTasks.cancelMineBlocksAsync(miningCancellationToken2);
     }
     
     //todo - test client/server mining and sending each other same chain,and different chains. Test both converge
     //to the consensus chain (do this on distributed nodes in functional testing)
 
     [Test]
-    public async Task Temp1()
-    {
-        Host host = new Host("192.168.1.7", 8001);
-        var listener = new NodeListenerServer();
-        listener.startListeningServer();
-
-        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.ECHO, "hi from temp1");
-
-        for (int i = 0; i < 10; i++)
-            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Global.masterChain);
-        string? resp = null;
-        while (resp is null)
-        {
-            Utilities.sleep(10);
-            resp = await Communication.communicateWithNode(
-                Serialize.serializeNetworkMessageToJson(nm), host);
-        }
-
-        Utilities.sleep(2000);
-        
-        for (int i = 0; i < 5; i++)
-            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Global.masterChain);
-
-        while (true)
-        {
-            // var resp = await Communication.communicateWithNode(
-            //     Serialize.serializeNetworkMessageToJson(nm), host);
-            Utilities.sleep(100);
-        }
-    }
-    
-    [Test]
-    public async Task Temp2()
-    {
-        // Host host = new Host(Settings.nodeIp, 8000);
-        Host host = new Host("192.168.1.19", 8000);
-
-        Settings.nodePort = 8001;
-        var listener = new NodeListenerServer();
-        listener.startListeningServer();
-
-        Blockchain chain = new Blockchain();
-        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.GETCHAIN, "hi from temp2");
-        var resp = await Communication.communicateWithNode(
-            Serialize.serializeNetworkMessageToJson(nm), host);
-        var msg = Serialize.deserializeJsonToNetworkMessage(resp);
-        Assert.IsNotNull(msg);
-        chain = Serialize.deserializeJsonToBlockchain(msg.rawMessage);
-        BlockFactory.mineNextBlockAndAddToBlockchain(chain);
-        Block lastBlock = chain.getLastBlock();
-        nm = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, Serialize.serializeBlockToJson(lastBlock)); 
-        resp = await Communication.communicateWithNode(
-            Serialize.serializeNetworkMessageToJson(nm), host);
-        string respOld = resp;
-        
-        for (int i = 0; i < 10; i++)
-            BlockFactory.mineNextBlockAndAddToBlockchain(chain);
-        ArakCoin.Global.masterChain = chain;
-        nm = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, Serialize.serializeBlockToJson(chain.getLastBlock()),
-            new Host(Settings.nodeIp, 8001));
-        resp = await Communication.communicateWithNode(
-            Serialize.serializeNetworkMessageToJson(nm), host);
-        
-        while (true)
-        {
-            Utilities.sleep(100);
-        }
-    }
-
-    [Test]
-    public async Task Temp3()
-    {
-        Host host = new Host(Settings.nodeIp, 8000);
-
-        Settings.nodePort = 8001;
-        var listener = new NodeListenerServer();
-        listener.startListeningServer();
-        
-        NetworkMessage nm = new NetworkMessage(MessageTypeEnum.GETCHAIN, "hi from temp2");
-        var resp = await Communication.communicateWithNode(
-            Serialize.serializeNetworkMessageToJson(nm), host);
-    }
-    
-
-    [Test]
     public void Temp()
     {
-        var listener = new NodeListenerServer();
-        listener.startListeningServer();
-        
-        Settings.nodePort = 8001;
-        var listener2 = new NodeListenerServer();
-        listener2.startListeningServer();
-
-        Settings.nodePort = 8002;
-        var listener3 = new NodeListenerServer();
-        listener3.startListeningServer();
-        
-        while (true)
-            Utilities.sleep(100);
-        int b = 3;
-        int c = 4;
-        
 
     }
     

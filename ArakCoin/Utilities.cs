@@ -55,6 +55,19 @@ public class Utilities
 			.First(x => x.AddressFamily == AddressFamily.InterNetwork)
 			.ToString();
 	}
+
+	/**
+	 * Gets a truly random number
+	 */
+	public static int getTrulyRandomNumber()
+	{
+		using (RNGCryptoServiceProvider rg = new RNGCryptoServiceProvider())
+		{ 
+			byte[] rno = new byte[5];    
+			rg.GetBytes(rno);    
+			return BitConverter.ToInt32(rno, 0); 
+		}
+	}
 	
 	/**
 	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere. This

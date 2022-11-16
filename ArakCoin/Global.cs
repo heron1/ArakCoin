@@ -5,5 +5,15 @@
  */
 public static class Global
 {
-    public static Blockchain masterChain = new Blockchain(); //the main blockchain located at this node
+    //the main blockchain located at this node
+    public static Blockchain masterChain = new Blockchain(); 
+    
+    //lock to synchronize mining between threads
+    public static readonly object asyncMiningLock = new object(); 
+    
+    //global async mining cancellation token
+    public static CancellationTokenSource miningCancelToken = new CancellationTokenSource(); 
+    
+    //the block that is currently being mined locally for the main blockchain at this node (if applicable)
+    public static Block? nextBlock = null;
 }

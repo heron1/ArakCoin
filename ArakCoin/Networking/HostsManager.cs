@@ -8,11 +8,22 @@ public static class HostsManager
 {
     private static List<Host> nodes = new List<Host>();
     private static string hostsFilename = "hostsfile.json";
+    public static readonly object hostsLock = new object(); //lock for critical sections on the hosts file
+
 
     static HostsManager()
     {
-        //attempt to load nodes from the hostsfile on disk at program start. If fails, nodes list will be empty
-        loadNodes(); 
+        //attempt to load nodes from the hostsfile on disk at program start. This will additionally ensure that the
+        //starting nodes in the Settings.startingNodes field exist in the hosts file. Note that if no nodes are
+        //successfully loaded, the nodes list will be empty at program start.
+        loadNodes();
+        foreach (var host in Settings.startingNodes)
+        {
+            if (!nodes.Contains(host))
+            {
+                addNode(host);
+            }
+        }
     }
 
     public static List<Host> getNodes()
@@ -26,11 +37,14 @@ public static class HostsManager
      */
     public static bool addNode(Host node)
     {
-        if (nodes.Contains(node))
-            return false;
-        nodes.Add(node);
-        
-        return saveNodes();
+        lock (hostsLock)
+        {
+            if (nodes.Contains(node))
+                return false;
+            nodes.Add(node);
+
+            return saveNodes();
+        }
     }
 
     /**
@@ -39,10 +53,13 @@ public static class HostsManager
      */
     public static bool removeNode(Host node)
     {
-        if (!nodes.Remove(node))
-            return false;
-        
-        return saveNodes();
+        lock (hostsLock)
+        {
+            if (!nodes.Remove(node))
+                return false;
+
+            return saveNodes();
+        }
     }
 
     /**
@@ -51,14 +68,17 @@ public static class HostsManager
      */
     public static bool saveNodes()
     {
-        var jsonNodes = Serialize.serializeHostsToJson(nodes);
-        if (jsonNodes is null)
-            return false;
+        lock (hostsLock)
+        {
+            var jsonNodes = Serialize.serializeHostsToJson(nodes);
+            if (jsonNodes is null)
+                return false;
 
-        if (!Storage.writeJsonToDisk(jsonNodes, hostsFilename))
-            return false;
+            if (!Storage.writeJsonToDisk(jsonNodes, hostsFilename))
+                return false;
 
-        return true;
+            return true;
+        }
     }
 
     /*
@@ -67,15 +87,38 @@ public static class HostsManager
      */
     public static bool loadNodes()
     {
-        string? jsonNodes = Storage.readJsonFromDisk(hostsFilename);
-        if (jsonNodes is null)
-            return false;
+        lock (hostsLock)
+        {
+            string? jsonNodes = Storage.readJsonFromDisk(hostsFilename);
+            if (jsonNodes is null)
+                return false;
 
-        List<Host>? deserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
-        if (deserializedNodes is null)
-            return false;
+            List<Host>? deserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
+            if (deserializedNodes is null)
+                return false;
 
-        nodes = deserializedNodes;
-        return true;
+            nodes = deserializedNodes;
+            return true;
+        }
+    }
+
+    /**
+     * Clear stored network nodes both from memory and the hosts file on disk. Returns whether operation succeeded.
+     * Note this operation is atomic (either both operations happen, or neither do)
+     */
+    public static bool clearAllNodes()
+    {
+        lock (hostsLock)
+        {
+            var oldNodes = nodes.ToList();
+            nodes = new List<Host>();
+            if (!saveNodes())
+            {
+                nodes = oldNodes;
+                return false;
+            }
+
+            return true;
+        }
     }
 }

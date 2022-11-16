@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Security.Cryptography;
 using ArakCoin;
+using ArakCoin.Networking;
 using ArakCoin.Transactions;
 
 namespace TestSuite;
@@ -46,13 +47,7 @@ public class ManualTests
 		//potentially revealing unexpected bugs
 		
 		//initialize the RNG
-		int seed;
-		using (RNGCryptoServiceProvider rg = new RNGCryptoServiceProvider()) //get truly random seed for pseudo-rng
-		{ 
-			byte[] rno = new byte[5];    
-			rg.GetBytes(rno);    
-			seed = BitConverter.ToInt32(rno, 0); 
-		}
+		int seed = Utilities.getTrulyRandomNumber();
 		Random random = new Random(seed);
 		
 		List <TxRecord> txRecords = new List<TxRecord>();
@@ -159,5 +154,115 @@ public class ManualTests
 				           $"{Wallet.getCurrentCirculatingCoinSupply(bchain)} from {bchain.getLength()} blocks\n");
 			}
 		}
+	}
+
+	/**
+	 * This is a non-trivial manual test which can be called from any number of separate nodes in
+	 * distributed locations that can each separately take part in this same test, communicating via their own sockets
+	 * connections following the blockchain's P2P protocol.
+	 *
+	 * In essence this will test the blockchain in action in a live network - as separate nodes run this test they will
+	 * communicate their host details to the known nodes in their own local hosts file. Nodes should share on-going
+	 * mined blocks, mempools, and the list of other known nodes that have registered with them. Nodes should also
+	 * reach byzantine consensus via requesting blockchains from one another if communicated blocks differ to what's
+	 * expected.
+	 *
+	 * Random mining will ensure that the communicated blocks will sometimes be only the next valid block, whilst
+	 * other times may be many blocks ahead (ie: some nodes may mine the chain many blocks ahead in "stealth").
+	 * This behaviour is programmed via nodes randomly sleeping instead of listening to the network or mining.
+	 * Delibarately invalid blocks will also be communicated via the network by nodes, which should not corrupt the
+	 * byzantine consensus chain.
+	 *
+	 * Periodic assertions will exist for things that are easy to test (such as chain validation), however manual
+	 * log observation should be done to ensure the blockchain network is operating correctly and that all nodes are
+	 * recognizing one another. It's assumed the tester will be able to access each node and view the log messages
+	 * in the terminal.
+	 *
+	 * This is an on-going test which will be updated as the P2P protocol is expanded, and may also include
+	 * simulated transactions in the future. This test should serve as a "sanity check" that the blockchain is working
+	 * as intended on the network protocol level and below.
+	 *
+	 * todo: begin implementing this
+	 * todo: implementation is on-going
+	 */
+	[Test]
+	public async Task TestBlockhainOperationAndByzantineConsensusViaNetworkOfNodes()
+	{
+		//SETUP BEGINS
+		
+		//start this node's listening server to handle incoming connections from both other nodes and clients
+		NodeListenerServer listeningServer = new NodeListenerServer();
+		listeningServer.startListeningServer();
+		
+		//load this node's hosts file, and asynchronously register itself with every node in it.
+		//Whilst every node need not contain the same starting node to kickstart the P2P discovery protocol,
+		//it should be logically possible for every node to discover one another from each other - the
+		//ordering this is done in however shouldn't matter.
+		foreach (var node in HostsManager.getNodes())
+		{
+			NetworkingManager.registerThisNodeWithAnotherNode(node);
+		}
+		
+		//update local hosts file from all known nodes - wait for this operation to complete
+		NetworkingManager.updateHostsFileFromKnownNodes();
+
+		var candidateChains = new List<Blockchain>();
+		//retrieve each known node's blockchain and establish the consensus chain locally from the responses
+		foreach (var node in HostsManager.getNodes())
+		{
+			var receivedChain = NetworkingManager.getBlockchainFromOtherNode(node);
+			if (receivedChain is not null) 
+				candidateChains.Add(receivedChain); //chain validation will happen later
+		}
+
+		//validated winning chain is stored as the local consensus chain
+		var winningChain = Blockchain.establishWinningChain(candidateChains);
+		if (winningChain is not null)
+			ArakCoin.Global.masterChain = winningChain;
+		
+		
+		//SIMULATION BEGINS (end of setup)
+		//begin mining as a new Task in the background
+		ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+		
+		//initialize the RNG
+		int seed = Utilities.getTrulyRandomNumber();
+		Random random = new Random(seed);
+
+		int noSleepCounter = 10; //don't sleep for this number of iterations when no sleep mode is activated
+		bool isNoSleepActive = false; //is the noSleep counter active?
+		
+		while (true)
+		{
+			if (!isNoSleepActive && random.Next(0, 3) == 0)
+				isNoSleepActive = true; //go into "no sleep" mode 33% of the time if state isn't active
+			
+			if (!isNoSleepActive)
+			{
+				int sleepTime = random.Next(0, 10000);
+				LogTestMsg($"sleeping {sleepTime}ms..");
+				listeningServer.stopListeningServer(); //simulate node going offline
+				
+				bool miningLocalStill = random.Next(0, 2) % 2 == 0; //50% chance mining resumes offline or not
+				if (miningLocalStill)
+					ArakCoin.Global.miningCancelToken.Cancel(); //also cancel local block mining
+				
+				Utilities.sleep(sleepTime);
+				
+				listeningServer.startListeningServer(); //simulate node coming back online
+				
+				if (miningLocalStill)
+					ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync(); //resume local block mining
+			}
+			else
+			{
+				if (noSleepCounter-- == 0)
+				{
+					isNoSleepActive = false;
+					noSleepCounter = 10;
+				}
+			}
+		}
+
 	}
 }

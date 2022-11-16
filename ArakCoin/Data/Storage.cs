@@ -10,7 +10,13 @@ public static class Storage
     {
         try
         {
-            File.WriteAllText(filename, data);
+            string appdataFolder = 
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ArakCoin");
+            
+            if (!Directory.Exists(appdataFolder))
+                Directory.CreateDirectory(appdataFolder);
+            
+            File.WriteAllText(Path.Combine(appdataFolder, filename), data);
         }
         catch
         {
@@ -26,7 +32,13 @@ public static class Storage
         string text;
         try
         {
-            text = File.ReadAllText(filename);
+            string appdataFolder = 
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ArakCoin");
+            
+            if (!Directory.Exists(appdataFolder))
+                Directory.CreateDirectory(appdataFolder);
+            
+            text = File.ReadAllText(Path.Combine(appdataFolder, filename));
         }
         catch
         {

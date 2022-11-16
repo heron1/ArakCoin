@@ -8,11 +8,11 @@
  * if the client is sending a next valid block, or is requesting to be added as a recognized node to the receiving
  * node's hostfile (otherwise the receiver will usually ignore this field). This field can be spoofed with a different
  * node as there is no authentication, however a client that abuses this ability for malicious purposes can be
- * quickly blacklisted by its IP. Furthermore, bad nodes are easily identified and can be removed from the
+ * quickly blacklisted by its IP. Furthermore, bad nodes can be identified and removed from the
  * hostsfile if they don't perform reliably. Note it makes no sense for a receiver to populate the sendingNode field
  * in its response message, as the client must already have known its value in order to initiate the connection.
  *
- * The .ToString method will automatically serialize a class instance
+ * The .ToString method will automatically serialize a class instance into a json format ready for communication
  */
 public class NetworkMessage
 {
@@ -29,7 +29,7 @@ public class NetworkMessage
     
     public override string ToString()
     {
-        return Serialize.serializeNetworkMessageToJson(this)!;
+        return Serialize.serializeNetworkMessageToJson(this);
     }
 
 }

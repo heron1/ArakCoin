@@ -11,21 +11,6 @@ namespace ArakCoin.Networking;
 public static class Communication
 {
     /**
-     * It's recommended the other methods are used to communicate with a host, however this function
-     * will allow the creation of a network stream given a host. Unlike the other methods in this class, the
-     * NetworkStream must be manually disposed of once the communication is finished.
-     */
-    public static NetworkStream createNetworkStreamWithHost(Host host)
-    {
-        var ipEndPoint = IPEndPoint.Parse(host.ToString());
-        using TcpClient client = new();
-        client.Connect(ipEndPoint);
-        NetworkStream stream = client.GetStream();
-
-        return stream;
-    }
-    
-    /**
      * Send a message through the given network stream that adheres to this blockchain's base communication protocol.
      * Returns true if the message was successfully sent, false otherwise
      */
@@ -127,7 +112,7 @@ public static class Communication
 
     /*
      * A higher level communication function that will send a message to a given node as a client, and return
-     * the response from the host.
+     * the response from the node.
      * Note that -
      *  1) The host is expected to be a node that is currently listening for a client connection
      *  2) The sent message is expected to adhere to the blockchain's Message protocol, however there's no validation
@@ -139,7 +124,6 @@ public static class Communication
      */
     public static async Task<string?> communicateWithNode(string message, Host node)
     {
-        //todo consider adding a connection timeout here (test against non-responsive nodes)
         try
         {
             IPEndPoint ipEndPoint = IPEndPoint.Parse(node.ToString());
@@ -166,6 +150,38 @@ public static class Communication
         catch
         {
             return null;
+        }
+    }
+
+    /**
+     * An overloaded version of communicateWithNode that performs message validation both in the send and receive,
+     * and automatically handles all serialization and type checking. If any part of the operation fails, null is
+     * returned
+     */
+    public static async Task<NetworkMessage?> communicateWithNode(NetworkMessage message, Host node)
+    {
+        var serializedNetworkMsg = Serialize.serializeNetworkMessageToJson(message);
+        if (serializedNetworkMsg is null)
+            return null;
+        
+        string? resp = await Communication.communicateWithNode(serializedNetworkMsg, node);
+        if (resp is null)
+            return null;
+        
+        return Serialize.deserializeJsonToNetworkMessage(resp);
+    }
+    
+    /**
+     * Attempts to asynchronously broadcast the given network message to all known nodes in the hosts file.
+     * Does not check whether any of the sent messages were successfully sent.
+     */
+    public static void broadcastNetworkMessage(NetworkMessage message)
+    {
+        lock (HostsManager.hostsLock) {
+            foreach (var node in HostsManager.getNodes())
+            {
+                Communication.communicateWithNode(message, node);
+            }
         }
     }
     

@@ -7,12 +7,16 @@ namespace ArakCoin;
  */
 public class Block
 {
+	//block data fields that contribute to its hash
 	public readonly int index;
 	public Transaction[] transactions;
 	public long timestamp;
 	public string prevBlockHash;
 	public int difficulty;
 	public long nonce;
+
+	//below fields are not part of the block's data and don't contribute to its hash
+	public bool cancelMining = false; //allow a thread to cancel the mining of this block
 	
 	public Block(int index, Transaction[]? transactions, long timestamp, string prevBlockHash, int difficulty, 
 		int nonce)
@@ -79,15 +83,18 @@ public class Block
 	}
 
 	/**
-	 * Mine this block until its hash matches its difficulty. By default this will continue without any timeout, however
-	 * if a timeout is specified (in seconds) then the mining will stop once this is reached.
-	 
-	 * Returns true once the block is mined, false otherwise. Rewards are automatically distributed to
-	 * the node's public key within the settings file
+	 * Mine this block until its hash matches its difficulty. A block mine can be cancelled by setting the block's
+	 * cancelMining property to true from another thread
+	 *	 
+	 * Returns true once the block is mined, false otherwise. Coinbase transaction rewards are set to this node's
+	 * public key within the Settings file
 	 */
-	public bool mineBlock(int? timeoutSeconds = null)
+	public bool mineBlock()
 	{
-		//first we create the coinbase transaction for this block using this node's public key,
+		//first set the cancelMining property to false in case it was previously set to true
+		cancelMining = false;
+		
+		//we create the coinbase transaction for this block using this node's public key,
 		//and prepend it to the list of transactions. If the first transaction is already a coinbase
 		//transaction, we override it
 		if (transactions.Length != 0 && transactions[0].isCoinbaseTx)
@@ -108,8 +115,6 @@ public class Block
 			return false;
 		}
 		
-		long timestampStart = Utilities.getTimestamp();
-		
 		//assert block has valid data, if it doesn't, return false
 		if (calculateBlockHash(this) is null)
 			return false;
@@ -117,17 +122,14 @@ public class Block
 		//now we begin the mining process
 		while (!hashDifficultyMatch())
 		{
+			if (cancelMining) //block mining has been cancelled by another thread, we terminate this method
+				return hashDifficultyMatch(); 
+
 			long newTimestamp = Utilities.getTimestamp();
 			if (timestamp != newTimestamp)
 			{
 				timestamp = newTimestamp;
 				nonce = 1;
-
-				if (timeoutSeconds is not null)
-				{
-					if (newTimestamp - timestampStart > timeoutSeconds)
-						return hashDifficultyMatch(); // our optional timeout has been reached, we terminate the method
-				}
 			}
 
 			nonce++;
@@ -146,7 +148,8 @@ public class Block
 
 		if (this.index == other.index && Transaction.convertTxArrayToString(this.transactions) == 
 		    Transaction.convertTxArrayToString(other.transactions) && this.timestamp == other.timestamp &&
-		    this.prevBlockHash == other.prevBlockHash && this.difficulty == other.difficulty && this.nonce == other.nonce)
+		    this.prevBlockHash == other.prevBlockHash && this.difficulty == other.difficulty && 
+		    this.nonce == other.nonce)
 			return true;
 
 		return false;

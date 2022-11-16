@@ -108,80 +108,83 @@ public class Blockchain
 	 */
 	public void updateDifficulty()
 	{
-		Block? lastBlock = getLastBlock();
-		if (lastBlock is null)
-			return;
-
-		if (lastBlock.index % Settings.DIFFICULTY_INTERVAL_BLOCKS == 0) // difficulty update interval reached
+		lock (blockChainLock)
 		{
-			int lastDifficultyIndex = lastBlock.index - (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1);
-			Block? lastDifficultyUpdateBlock = getBlockByIndex(lastDifficultyIndex);
-			
-			// The blockchain's length must be at least as long as DIFFICULTY_INTERVAL_BLOCKS for this conditional to have been
-			// entered into. If it's not, the blockchain is in an invalid state. We will log this, and exit this function
-			// Alternatively, if lastDifficultyUpdateBlock is null, this is also an unexpected event
-			if (getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
-			{
-				string exceptionStr =
-					$"Expected blockchain length of at least: {Settings.DIFFICULTY_INTERVAL_BLOCKS} but instead" +
-					$"the length is: {getLength()}. Occurrence: updateDifficulty() inner conditional, with" +
-					$"lastBlock.index value of {lastBlock.index}";
-				Utilities.exceptionLog(exceptionStr);
-
+			Block? lastBlock = getLastBlock();
+			if (lastBlock is null)
 				return;
-			}
-			else if (lastDifficultyUpdateBlock is null)
+
+			if (lastBlock.index % Settings.DIFFICULTY_INTERVAL_BLOCKS == 0) // difficulty update interval reached
 			{
-				string exceptionStr =
-					$"Expected block at index {lastDifficultyIndex}, but received null. Occurrence: updateDifficulty() inner " +
-					$"conditional, with lastBlock.index value of {lastBlock.index}, and DIFFICULTY_INTERVAL_BLOCKS value of" +
-					$"{Settings.DIFFICULTY_INTERVAL_BLOCKS}";
-				Utilities.exceptionLog(exceptionStr);
+				int lastDifficultyIndex = lastBlock.index - (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1);
+				Block? lastDifficultyUpdateBlock = getBlockByIndex(lastDifficultyIndex);
 				
-				return;
-			}
-
-			long actualTimeTakenForDifficultyInterval = lastBlock.timestamp - lastDifficultyUpdateBlock.timestamp;
-			//set time taken to be at least 1 second if it's less
-			actualTimeTakenForDifficultyInterval = Math.Max(1, actualTimeTakenForDifficultyInterval);
-			
-			int expectedTimeTakenForDifficultyInterval =
-				Settings.BLOCK_INTERVAL_SECONDS * Settings.DIFFICULTY_INTERVAL_BLOCKS;
-
-			int lowerTimeBound = expectedTimeTakenForDifficultyInterval /
-			                     Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
-			int higherTimeBound = expectedTimeTakenForDifficultyInterval *
-			                      Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
-			
-			if (actualTimeTakenForDifficultyInterval < lowerTimeBound)
-			{
-				// Time taken was shorter than expected, so we increase the blockchain difficulty
-				int difficultyChange = 1;
-
-				// change difficulty with proportion to how far off actual and expected time taken are
-				while (actualTimeTakenForDifficultyInterval < expectedTimeTakenForDifficultyInterval / 
-				       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
+				// The blockchain's length must be at least as long as DIFFICULTY_INTERVAL_BLOCKS for this conditional to have been
+				// entered into. If it's not, the blockchain is in an invalid state. We will log this, and exit this function
+				// Alternatively, if lastDifficultyUpdateBlock is null, this is also an unexpected event
+				if (getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
 				{
-					difficultyChange++;
-				}
-				
-				currentDifficulty += difficultyChange;
-				Utilities.log($"Difficulty increased to {currentDifficulty}");
-			}
-			else if (actualTimeTakenForDifficultyInterval > higherTimeBound)
-			{
-				// Time taken was greater than expected, so we decrease the blockchain difficulty
-				int difficultyChange = 1;
+					string exceptionStr =
+						$"Expected blockchain length of at least: {Settings.DIFFICULTY_INTERVAL_BLOCKS} but instead" +
+						$"the length is: {getLength()}. Occurrence: updateDifficulty() inner conditional, with" +
+						$"lastBlock.index value of {lastBlock.index}";
+					Utilities.exceptionLog(exceptionStr);
 
-				// change difficulty with proportion to how far off actual and expected time taken are
-				while (actualTimeTakenForDifficultyInterval > expectedTimeTakenForDifficultyInterval * 
-				       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
-				{
-					difficultyChange++;
+					return;
 				}
+				else if (lastDifficultyUpdateBlock is null)
+				{
+					string exceptionStr =
+						$"Expected block at index {lastDifficultyIndex}, but received null. Occurrence: updateDifficulty() inner " +
+						$"conditional, with lastBlock.index value of {lastBlock.index}, and DIFFICULTY_INTERVAL_BLOCKS value of" +
+						$"{Settings.DIFFICULTY_INTERVAL_BLOCKS}";
+					Utilities.exceptionLog(exceptionStr);
+					
+					return;
+				}
+
+				long actualTimeTakenForDifficultyInterval = lastBlock.timestamp - lastDifficultyUpdateBlock.timestamp;
+				//set time taken to be at least 1 second if it's less
+				actualTimeTakenForDifficultyInterval = Math.Max(1, actualTimeTakenForDifficultyInterval);
 				
-				currentDifficulty -= difficultyChange;
-				Utilities.log($"Difficulty decreased to {currentDifficulty}");
+				int expectedTimeTakenForDifficultyInterval =
+					Settings.BLOCK_INTERVAL_SECONDS * Settings.DIFFICULTY_INTERVAL_BLOCKS;
+
+				int lowerTimeBound = expectedTimeTakenForDifficultyInterval /
+				                     Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
+				int higherTimeBound = expectedTimeTakenForDifficultyInterval *
+				                      Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
+				
+				if (actualTimeTakenForDifficultyInterval < lowerTimeBound)
+				{
+					// Time taken was shorter than expected, so we increase the blockchain difficulty
+					int difficultyChange = 1;
+
+					// change difficulty with proportion to how far off actual and expected time taken are
+					while (actualTimeTakenForDifficultyInterval < expectedTimeTakenForDifficultyInterval / 
+					       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
+					{
+						difficultyChange++;
+					}
+					
+					currentDifficulty += difficultyChange;
+					Utilities.log($"Difficulty increased to {currentDifficulty}");
+				}
+				else if (actualTimeTakenForDifficultyInterval > higherTimeBound)
+				{
+					// Time taken was greater than expected, so we decrease the blockchain difficulty
+					int difficultyChange = 1;
+
+					// change difficulty with proportion to how far off actual and expected time taken are
+					while (actualTimeTakenForDifficultyInterval > expectedTimeTakenForDifficultyInterval * 
+					       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
+					{
+						difficultyChange++;
+					}
+					
+					currentDifficulty -= difficultyChange;
+					Utilities.log($"Difficulty decreased to {currentDifficulty}");
+				}
 			}
 		}
 	}

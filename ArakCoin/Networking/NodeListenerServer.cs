@@ -141,7 +141,13 @@ public class NodeListenerServer : IDisposable
                 if (candidateNextBlock is null || candidateNextBlock.calculateBlockHash() is null)
                     return createErrorNetworkMessage($"Invalid block received");
                 if (Global.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
+                {
+                    //ensure this program is aware of the blockchain update due to external source
+                    handleExternalBlockchainUpdate(networkMessage.sendingNode); 
+                    
+                    //return success message
                     return new NetworkMessage(MessageTypeEnum.NEXTBLOCK, "");
+                }
                 if (candidateNextBlock.index > Global.masterChain.getLength() + 1) 
                     //Received block is a candidate ahead block. Execute new background task to handle whether
                     //another blockchain can be found to replace this one
@@ -226,9 +232,29 @@ public class NodeListenerServer : IDisposable
         {
             //the retrieved chain is in fact ahead of our own local chain. We should now replace our chain with it
             Global.masterChain.replaceBlockchain(candidateReplacementChain);
+            
+            //local state should be updated
+            handleExternalBlockchainUpdate(networkMessage.sendingNode);
         }
     }
-    
+
+    /**
+     * In the event an incoming client message causes the local blockchain to be changed (such as receiving a next
+     * valid block, or a replacement consensus chain), this method will ensure that the local state in this program
+     * responds appropriately (eg: if mining, the local next block should stop being mined, and mining should be
+     * resumed on the new updated chain, etc)
+     */
+    private void handleExternalBlockchainUpdate(Host? externalNode = null)
+    {
+        //log the chain update
+        string receivingNode = externalNode is null ? "unknown" : $"{externalNode.ToString()}";
+        Utilities.log($"Node received updated block/chain with length {Global.masterChain.getLength()} from node" +
+                      $" {receivingNode}");
+        
+        //stop current mining if it's occuring on a now outdated block
+        if (Global.nextBlock is not null)
+            Global.nextBlock.cancelMining = true;
+    }
 
     /**
      * Correctly close and dispose of the network connection and used threads when this class is disposed

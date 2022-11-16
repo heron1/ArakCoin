@@ -603,6 +603,37 @@ public class BlockchainIntegration
 		Assert.IsTrue(bchain.isBlockchainValid());
 	}
 
+	[Test]
+	public void TestCancelBlockMining()
+	{
+		//first ensure we can mine an easy block on a new thread to give confidence our test setup is correct
+		Block easyBlock = new Block(1, null, 100, "0", 2, 1);
+		Assert.IsFalse(easyBlock.hashDifficultyMatch());
+		var easyBlockMineTask = Task.Run(() =>
+		{
+			easyBlock.mineBlock();
+		});
+		easyBlockMineTask.Wait(); //wait for block mine on the thread
+		Assert.IsTrue(easyBlock.hashDifficultyMatch()); //block should be successfully mined
+		
+		//now we will create a block with a completely unreasonable difficulty, and attempt to mine it on a new thread
+		Block veryDifficultBlock = new Block(1, null, 100, "0", 40, 1);
+		Assert.IsFalse(veryDifficultBlock.hashDifficultyMatch());
+		var unreasonableBlockMineTask = Task.Run(() =>
+		{
+			veryDifficultBlock.mineBlock();
+		});
+		while (veryDifficultBlock.nonce == 1)
+			Utilities.sleep(10); //wait for at least some mining to occur from the other thread
+		
+		//now we test our ability to cancel the block mining in the other thread from this thread
+		veryDifficultBlock.cancelMining = true;
+		unreasonableBlockMineTask.Wait(); //wait for the block cancel to process on the other thread
+		
+		//Our main test assertion follows - We can successfully interrupt block mining before it's complete:
+		Assert.IsFalse(veryDifficultBlock.hashDifficultyMatch());
+	}
+
 	/**
 	 * Access point for testing arbitrary things in the project
 	 */
