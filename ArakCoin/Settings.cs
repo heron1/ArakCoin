@@ -73,7 +73,7 @@ public static class Settings
 	public static int nodePort = 8000;
 
 	/**
-	 * Time out a network communication message send or receive after waiting this number of milliseconds
+	 * Time out a network communication action after waiting this number of milliseconds
 	 */
 	public static int networkCommunicationTimeoutMs = 2000;
 

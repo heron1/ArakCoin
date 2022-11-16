@@ -28,7 +28,6 @@ public class NetworkingIntegrationTests
         Settings.nodePublicKey = testPublicKey;
         Settings.BLOCK_REWARD = 20;
         Settings.minMinerFee = 0;
-        Settings.networkCommunicationTimeoutMs = 500;
         Settings.echoCharLimit = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);
     }
@@ -335,7 +334,7 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp1()
     {
-        Host host = new Host(Settings.nodeIp, 8001);
+        Host host = new Host("192.168.1.7", 8001);
         var listener = new NodeListenerServer();
         listener.startListeningServer();
 
@@ -367,18 +366,19 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp2()
     {
-        Host host = new Host(Settings.nodeIp, 8000);
+        // Host host = new Host(Settings.nodeIp, 8000);
+        Host host = new Host("192.168.1.19", 8000);
 
         Settings.nodePort = 8001;
         var listener = new NodeListenerServer();
         listener.startListeningServer();
 
         Blockchain chain = new Blockchain();
-
         NetworkMessage nm = new NetworkMessage(MessageTypeEnum.GETCHAIN, "hi from temp2");
         var resp = await Communication.communicateWithNode(
             Serialize.serializeNetworkMessageToJson(nm), host);
         var msg = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsNotNull(msg);
         chain = Serialize.deserializeJsonToBlockchain(msg.rawMessage);
         BlockFactory.mineNextBlockAndAddToBlockchain(chain);
         Block lastBlock = chain.getLastBlock();

@@ -139,12 +139,20 @@ public static class Communication
      */
     public static async Task<string?> communicateWithNode(string message, Host node)
     {
+        //todo consider adding a connection timeout here (test against non-responsive nodes)
         try
         {
             IPEndPoint ipEndPoint = IPEndPoint.Parse(node.ToString());
 
             using TcpClient client = new();
-            await client.ConnectAsync(ipEndPoint);
+            
+            //attempt async connection along with a timeout task. If timeout is reached, return null
+            var timeoutTask = Task.Delay(Settings.networkCommunicationTimeoutMs);
+            var connectTask = client.ConnectAsync(ipEndPoint);
+            await Task.WhenAny(connectTask, timeoutTask);
+            if (timeoutTask.IsCompleted && !connectTask.IsCompleted)
+                return null;
+            
             await using NetworkStream stream = client.GetStream();
 
             bool success = await Communication.sendMessage(message, stream);
