@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinNode", "ArakCoinNod
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSuite", "TestSuite\TestSuite.csproj", "{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManualTests", "ManualTests\ManualTests.csproj", "{65C00CF3-FDA5-49A8-A182-6CBE45F5F54A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65C00CF3-FDA5-49A8-A182-6CBE45F5F54A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65C00CF3-FDA5-49A8-A182-6CBE45F5F54A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65C00CF3-FDA5-49A8-A182-6CBE45F5F54A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65C00CF3-FDA5-49A8-A182-6CBE45F5F54A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
