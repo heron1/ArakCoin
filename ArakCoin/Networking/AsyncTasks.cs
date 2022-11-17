@@ -25,7 +25,8 @@ public static class AsyncTasks
                         Utilities.log($"Mining block #{Global.masterChain.getLength() + 1}..");
                         Global.nextBlock = BlockFactory.createNewBlock(
                             Global.masterChain, Global.masterChain.mempool.ToArray());
-                        Global.nextBlock.mineBlock();
+                        if (!Blockchain.isGenesisBlock(Global.nextBlock))
+                            Global.nextBlock.mineBlock();
                         
                         //if the block was successfully mined and added to the local chain, broadcast it
                         if (Global.masterChain.addValidBlock(Global.nextBlock))
@@ -39,7 +40,10 @@ public static class AsyncTasks
                         }
                     }
                     else
+                    {
+                        Utilities.log("Mining stopped via token interrupt..");
                         break;
+                    }
                 }
             }
         }, cancelToken);

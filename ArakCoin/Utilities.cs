@@ -77,6 +77,7 @@ public class Utilities
 	{
 		Console.WriteLine($"Log message: {logMsg}");
 		Debug.WriteLine($"Log message: {logMsg}");
+		Console.Error.WriteLine($"Log message: {logMsg}");
 	}
 
 	/**
