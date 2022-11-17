@@ -209,11 +209,14 @@ public class ManualTests
 
 		var candidateChains = new List<Blockchain>();
 		//retrieve each known node's blockchain and establish the consensus chain locally from the responses
-		foreach (var node in HostsManager.getNodes())
+		lock (HostsManager.hostsLock)
 		{
-			var receivedChain = NetworkingManager.getBlockchainFromOtherNode(node);
-			if (receivedChain is not null) 
-				candidateChains.Add(receivedChain); //chain validation will happen later
+			foreach (var node in HostsManager.getNodes())
+			{
+				var receivedChain = NetworkingManager.getBlockchainFromOtherNode(node);
+				if (receivedChain is not null) 
+					candidateChains.Add(receivedChain); //chain validation will happen later
+			}
 		}
 
 		//validated winning chain is stored as the local consensus chain
@@ -242,18 +245,9 @@ public class ManualTests
 			{
 				int sleepTime = random.Next(0, 10000);
 				LogTestMsg($"sleeping {sleepTime}ms..");
-				listeningServer.stopListeningServer(); //simulate node going offline
-				
-				bool miningLocalStill = random.Next(0, 2) % 2 == 0; //50% chance mining resumes offline or not
-				if (miningLocalStill)
-					ArakCoin.Global.miningCancelToken.Cancel(); //also cancel local block mining
-				
+				ArakCoin.Global.miningCancelToken.Cancel(); //cancel local block mining
 				Utilities.sleep(sleepTime);
-				
-				listeningServer.startListeningServer(); //simulate node coming back online
-				
-				if (miningLocalStill)
-					ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync(); //resume local block mining
+				ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync(); //resume local block mining
 			}
 			else
 			{
@@ -280,6 +274,9 @@ public class ManualTests
 			//todo - debug why other node not communicating (periodic re-registration broadcast should ensure it does,
 			//or breakpoint being hit)
 			//todo - many types of broadcasting (eg: mempools)
+			
+			//now sleep a bit to let the background threads do their work
+			Utilities.sleep(random.Next(0, 1000));
 		}
 
 	}
