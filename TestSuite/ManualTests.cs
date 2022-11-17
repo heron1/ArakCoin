@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Text;
 using ArakCoin;
 using ArakCoin.Networking;
 using ArakCoin.Transactions;
@@ -262,6 +263,23 @@ public class ManualTests
 					noSleepCounter = 10;
 				}
 			}
+
+			if (random.Next(0, 10) == 0) //10% of the time in the loop, re-register this node to known nodes
+			//and also update hosts file
+			{
+				StringBuilder sb = new StringBuilder("Known nodes: \n");
+				foreach (var node in HostsManager.getNodes())
+				{
+					NetworkingManager.registerThisNodeWithAnotherNode(node);
+					sb.Append($"\t{node.ToString()}");
+				}
+				LogTestMsg(sb.ToString());
+				NetworkingManager.updateHostsFileFromKnownNodes();
+			}
+			//todo - node check re-registration broadcast (every now and then)
+			//todo - debug why other node not communicating (periodic re-registration broadcast should ensure it does,
+			//or breakpoint being hit)
+			//todo - many types of broadcasting (eg: mempools)
 		}
 
 	}

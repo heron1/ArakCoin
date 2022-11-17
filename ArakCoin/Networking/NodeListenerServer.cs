@@ -179,7 +179,10 @@ public class NodeListenerServer : IDisposable
                 bool success = HostsManager.addNode(networkMessage.sendingNode);
                 string rawMsg;
                 if (success)
+                {
                     rawMsg = $"Added {networkMessage.sendingNode} to hosts file";
+                    Utilities.log($"Added node ${networkMessage.sendingNode} to local hosts file");
+                }
                 else
                     rawMsg = $"Node add failed (might already exist in local hostsfile):" +
                              $" {networkMessage.sendingNode.ToString()}";
