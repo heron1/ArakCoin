@@ -279,6 +279,14 @@ public class ManualTests
 			
 			//now sleep a bit to let the background threads do their work
 			Utilities.sleep(random.Next(0, 1000));
+			if (ArakCoin.Global.masterChain.isBlockchainValid())
+			{
+				Utilities.log("Blockchain validated..");
+			}
+			else
+			{
+				throw new("Invalid blockchain encountered");
+			}
 		}
 
 	}

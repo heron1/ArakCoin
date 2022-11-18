@@ -75,8 +75,8 @@ public class Utilities
 	 */
 	public static void log(string logMsg)
 	{
-		Console.WriteLine($"Log message: {logMsg}");
-		Debug.WriteLine($"Log message: {logMsg}");
+		// Console.WriteLine($"Log message: {logMsg}");
+		// Debug.WriteLine($"Log message: {logMsg}");
 		Console.Error.WriteLine($"Log message: {logMsg}");
 	}
 

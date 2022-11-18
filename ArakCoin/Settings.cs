@@ -78,7 +78,7 @@ public static class Settings
 	 * The ipv4 address of this host for network communication.
 	 * Set this manually if the incorrect IP is being inferred from the Utilities.getLocalIpAddress() function
 	 */
-	public static string nodeIp = Utilities.getLocalIpAddress();
+	public static string nodeIp = "192.168.1.19";
 
 	/**
 	 * The default port to use for network communication as a node

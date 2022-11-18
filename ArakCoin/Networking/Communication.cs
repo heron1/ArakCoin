@@ -135,7 +135,10 @@ public static class Communication
             var connectTask = client.ConnectAsync(ipEndPoint);
             await Task.WhenAny(connectTask, timeoutTask);
             if (timeoutTask.IsCompleted && !connectTask.IsCompleted)
+            {
+                Utilities.log($"Timed out connecting with host {node.ToString()}");
                 return null;
+            }
             
             await using NetworkStream stream = client.GetStream();
 

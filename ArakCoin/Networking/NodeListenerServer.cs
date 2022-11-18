@@ -28,7 +28,7 @@ public class NodeListenerServer : IDisposable
             return;
 
         isRunning = true;
-        
+
         //create a new cancellation token source and a new task to run the entry point function loop
         cancellationTokenSource = new CancellationTokenSource();
         listeningEntryPointTask = Task.Run(listeningEntryPoint);
@@ -56,6 +56,7 @@ public class NodeListenerServer : IDisposable
     
     private void listeningEntryPoint()
     {
+
         //create the tcp listener using this node's IP on its given port in the settings file
         IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, Settings.nodePort);
         TcpListener listener = new(ipEndPoint); 
@@ -105,7 +106,8 @@ public class NodeListenerServer : IDisposable
     /**
      * Processes a received message, which should be a json serialized NetworkMessage. If the message is invalid
      * in any way (including not being a serialized NetworkMessage, or not adhering to the Networking Protocol),
-     * the response will indicate an error. This returns the appropriate NetworkMessage object for a response.
+     * the response will indicate an error. This returns the appropriate NetworkMessage object for a response, and
+     * also performs any valid actions associated with the message.
      */
     private NetworkMessage processResponseMsg(string receivedMsg)
     {
@@ -216,6 +218,7 @@ public class NodeListenerServer : IDisposable
         string? resp = await Communication.communicateWithNode(serializedMsg, networkMessage.sendingNode);
         if (resp is null) //node communication failure, we cannot proceed
             return;
+
         NetworkMessage? recvMsg = Serialize.deserializeJsonToNetworkMessage(resp);
         if (recvMsg is null)
             return;
