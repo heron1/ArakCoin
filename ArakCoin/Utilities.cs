@@ -70,14 +70,17 @@ public class Utilities
 	}
 	
 	/**
-	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere. This
-	 * implementation may change over time, but the same function can still be called.
+	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere.
+	 * This implementation may change over time, but the same function can still be called.
 	 */
 	public static void log(string logMsg)
 	{
-		// Console.WriteLine($"Log message: {logMsg}");
-		// Debug.WriteLine($"Log message: {logMsg}");
-		Console.Error.WriteLine($"Log message: {logMsg}");
+		if (Settings.displayLogMessages)
+		{
+			// Console.WriteLine($"Log message: {logMsg}");
+			// Debug.WriteLine($"Log message: {logMsg}");
+			Console.Error.WriteLine($"Log message: {logMsg}");
+		}
 	}
 
 	/**

@@ -1,11 +1,19 @@
 ﻿//todo - ongoing refactoring of moving the manual tests from the TestSuite project into its own project
+//note: ManualTests in the TestSuite project should be refactored into terminating functional tests that do
+//assertions
 
 using System.Text;
 using ArakCoin;
 using ArakCoin.Networking;
 
+
 namespace ManualTests
 {
+/**
+ * This ManualTests project serves as a way to manually test different parts of the blockchain. It does not
+ * assert anything - manual observation is required. To run proper local unit tests, execute the TestSuite project
+ * instead. Some tests may throw an exception to simulate an assertion - this will be indicated in the test description
+ */
     internal static class Program
     {
         //nodes to participate in the manual connectivity tests (different to hosts file)
@@ -17,14 +25,16 @@ namespace ManualTests
         
         static void Main(string[] args)
         {
-            
+            //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
+            //as desired. ALTERNATIVELY: This project could be executed with different command line arguments indicating
+            //the desired test, along with any arguments for the test (where applicable).
             TestBasicNetworkInteraction().Wait();
 
         }
 
         /**
-         * Basic test to see if a given list of hosts can communicate both ways. Will remove the local node from
-         * the connectivity test.
+         * Basic test to see if a given list of hosts can communicate both ways. Make sure all nodes have executed
+         * the test before pressing the key to continue, which will begin the test
          */
         public static async Task TestNetworkConnectivityFromManualNodesList()
         {
@@ -54,6 +64,11 @@ namespace ManualTests
             Console.ReadLine();
         }
         
+        /**
+         * Basic test to see if the nodes in the hosts file can communicate. Make sure all nodes have executed
+         * the test before pressing the key to continue, which will begin the test. All nodes should share the same
+         * hosts file for this test (the test will not undergo node discovery like the live chain does)
+         */
         public static async Task TestNetworkConnectivityFromHostsfile()
         {
             var listener = new NodeListenerServer();
@@ -87,7 +102,11 @@ namespace ManualTests
             Console.WriteLine("Press Enter to end the program..");
             Console.ReadLine();
         }
-
+        
+        /**
+         * Multiple nodes can execute this same unit test to see if the blockchain networking protocol is working
+         * as intended - this is a manual observation test
+         */
         public static async Task TestBasicNetworkInteraction()
         {
             var listener = new NodeListenerServer();
@@ -98,13 +117,29 @@ namespace ManualTests
             Console.WriteLine("Continuing..");
             
             //SIMULATION BEGINS (end of setup)
+            
             //begin mining as a new Task in the background
             Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+            
+            //begin node discovery & registration as a new Task in the background
+            Global.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
 
             while (true)
             {
                 Utilities.sleep(10000);
             }
+        }
+
+        /**
+         * Similar to the TestBasicNetworkInteraction test except nodes will also create and share random transactions,
+         * and keep track of their wallets. Transactions, balances, and block reward details will also be displayed.
+         * Additionally, periodic assertions (via throwing an exception) will take place if the blockchain enters into
+         * an invalid state, or the circulating supply does not equal the currently mined block supply that should
+         * exist.
+         */
+        public static async Task TestSimulatedNetworkInteraction()
+        {
+            //todo this
         }
         
         

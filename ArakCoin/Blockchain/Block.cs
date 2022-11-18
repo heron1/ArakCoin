@@ -114,11 +114,15 @@ public class Block
 			Utilities.exceptionLog($"Created coinbase tx in block {index} but it failed validation");
 			return false;
 		}
+
+		string? startingHash = calculateBlockHash(this);
 		
 		//assert block has valid data, if it doesn't, return false
-		if (calculateBlockHash(this) is null)
+		if (startingHash is null)
 			return false;
-		
+
+		Utilities.log($"Mining block #{index} with starting hash {startingHash.Substring(0, 4)}...");
+
 		//now we begin the mining process
 		while (!hashDifficultyMatch())
 		{

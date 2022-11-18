@@ -14,6 +14,9 @@ public static class Global
     //global async mining cancellation token
     public static CancellationTokenSource miningCancelToken = new CancellationTokenSource(); 
     
+    //global P2P discovery & node registration cancellation token
+    public static CancellationTokenSource nodeDiscoveryCancelToken = new CancellationTokenSource(); 
+    
     //the block that is currently being mined locally for the main blockchain at this node (if applicable)
     public static Block? nextBlock = null;
 }

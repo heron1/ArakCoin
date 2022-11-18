@@ -14,8 +14,9 @@ public static class HostsManager
     static HostsManager()
     {
         //attempt to load nodes from the hostsfile on disk at program start. This will additionally ensure that the
-        //starting nodes in the Settings.startingNodes field exist in the hosts file. Note that if no nodes are
-        //successfully loaded, the nodes list will be empty at program start.
+        //starting nodes in the Settings.startingNodes field exist in the hosts file. Also, if this host is a
+        //node, it will include itself as well in the hosts file. Note that if no nodes are successfully
+        //loaded, the nodes list will be empty at program start.
         loadNodes();
         foreach (var host in Settings.startingNodes)
         {
@@ -24,11 +25,21 @@ public static class HostsManager
                 addNode(host);
             }
         }
+
+        if (Settings.isNode && !nodes.Contains(new Host(Settings.nodeIp, Settings.nodePort)))
+            addNode(new Host(Settings.nodeIp, Settings.nodePort));
     }
 
     public static List<Host> getNodes()
     {
-        return nodes;
+        //make a copy of the nodes so that if the internal list mutates, the caller doesn't encounter a changing list
+        lock (hostsLock)
+        {
+            List<Host> currentNodes;
+            currentNodes = nodes.ToList();
+
+            return currentNodes;
+        }
     }
 
     /**
@@ -42,8 +53,11 @@ public static class HostsManager
             if (nodes.Contains(node))
                 return false;
             nodes.Add(node);
+            bool success = saveNodes();
+            if (success)
+                Utilities.log($"Successfully registered node {node} in the hosts file..");
 
-            return saveNodes();
+            return success;
         }
     }
 
@@ -58,7 +72,11 @@ public static class HostsManager
             if (!nodes.Remove(node))
                 return false;
 
-            return saveNodes();
+            bool success = saveNodes();
+            if (success)
+                Utilities.log($"Successfully removed node {node} in the hosts file..");
+
+            return success;
         }
     }
 
@@ -117,6 +135,8 @@ public static class HostsManager
                 nodes = oldNodes;
                 return false;
             }
+
+            Utilities.log("all nodes cleared..");
 
             return true;
         }

@@ -45,8 +45,15 @@ public static class Settings
 	 * These settings need not be fixed and may be adjustable without affecting the blockchain protocol
 	 */
 	
-	// decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called
+	/**
+	 * Decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called
+	 */
 	public static bool terminateProgramOnExceptionLog = false;
+
+	/**
+	 * Decide whether standard log (but not ExceptionLog) messages are displayed or not
+	 */
+	public static bool displayLogMessages = true;
 
 	/**
 	 * Sets whether this host is a node or not. If set to true, it will undergo network operations such as block
@@ -58,6 +65,17 @@ public static class Settings
 	 * mine a block, but it isn't a recognized node.
 	 */
 	public static bool isNode = true;
+	
+	/**
+	 * The ipv4 address of this host for network communication.
+	 * Set this manually if the incorrect IP is being inferred from the Utilities.getLocalIpAddress() function
+	 */
+	public static string nodeIp = "192.168.1.19";
+
+	/**
+	 * The default port to use for network communication as a node
+	 */
+	public static int nodePort = 8000;
 
 	/**
 	 * The public key to receive coins if this host mines a block
@@ -75,20 +93,17 @@ public static class Settings
 	public static int minMinerFee = 0;
 
 	/**
-	 * The ipv4 address of this host for network communication.
-	 * Set this manually if the incorrect IP is being inferred from the Utilities.getLocalIpAddress() function
-	 */
-	public static string nodeIp = "192.168.1.19";
-
-	/**
-	 * The default port to use for network communication as a node
-	 */
-	public static int nodePort = 8000;
-
-	/**
 	 * Time out a network communication action after waiting this number of milliseconds
 	 */
 	public static int networkCommunicationTimeoutMs = 2000;
+
+	/**
+	 * This setting is only applicable if the isNode property is set to true.
+	 * Node will attempt to acquire a list of hosts files from all known nodes in its own hosts file, and also
+	 * register itself with them every this number of seconds. Setting this value too low may be considered spam
+	 * and result in the node's IP being blacklisted by some nodes
+	 */
+	public static int nodeDiscoveryDelaySeconds = 10;
 
 	/**
 	 * The number of characters this node will allow for a valid ECHO request/response. It's recommended to leave this

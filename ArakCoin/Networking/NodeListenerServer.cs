@@ -141,7 +141,9 @@ public class NodeListenerServer : IDisposable
             case MessageTypeEnum.NEXTBLOCK:
                 Block? candidateNextBlock = Serialize.deserializeJsonToBlock(networkMessage.rawMessage);
                 if (candidateNextBlock is null || candidateNextBlock.calculateBlockHash() is null)
+                {
                     return createErrorNetworkMessage($"Invalid block received");
+                }
                 if (Global.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
                 {
                     //ensure this program is aware of the blockchain update due to external source
@@ -183,7 +185,7 @@ public class NodeListenerServer : IDisposable
                 if (success)
                 {
                     rawMsg = $"Added {networkMessage.sendingNode} to hosts file";
-                    Utilities.log($"Added node ${networkMessage.sendingNode} to local hosts file");
+                    Utilities.log($"Added node {networkMessage.sendingNode} to local hosts file");
                 }
                 else
                     rawMsg = $"Node add failed (might already exist in local hostsfile):" +
