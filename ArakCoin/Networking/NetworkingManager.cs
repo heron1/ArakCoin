@@ -59,6 +59,7 @@ public static class NetworkingManager
     public static void updateHostsFileFromKnownNodes()
     {
         //todo - async version? necessary for large amount of hosts -> difficult with lock but do it
+        //(ensure tests are written first)
         lock (HostsManager.hostsLock)
         {
             var newNodes = new List<Host>();

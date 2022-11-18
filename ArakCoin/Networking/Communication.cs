@@ -180,11 +180,9 @@ public static class Communication
      */
     public static void broadcastNetworkMessage(NetworkMessage message)
     {
-        lock (HostsManager.hostsLock) {
-            foreach (var node in HostsManager.getNodes())
-            {
-                Communication.communicateWithNode(message, node);
-            }
+        foreach (var node in HostsManager.getNodes())
+        {
+            Communication.communicateWithNode(message, node);
         }
     }
     

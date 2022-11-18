@@ -7,7 +7,8 @@ public static class AsyncTasks
 {
     /**
      * Asynchronously mine blocks until the returned cancellation token is cancelled, and broadcasts them to the
-     * network. Automatically updates to the latest valid chain if local chain is changed.
+     * network. Automatically updates to the latest valid chain if local chain is changed, cancelling current
+     * block mine and proceeding to the next block.
      */
     public static CancellationTokenSource mineBlocksAsync()
     {

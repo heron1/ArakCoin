@@ -150,9 +150,12 @@ public class DataIntegrationTests
         //Test 1: store the mempool on disk, assert it can be retrieved and is identical to local copy in memory
         string? serializedMempool = Serialize.serializeMempoolToJson(bchain.mempool);
         Assert.IsNotNull(serializedMempool);
-        Storage.writeJsonToDisk(serializedMempool, "mempool.json");
+        bool success = Storage.writeJsonToDisk(serializedMempool, "mempool.json");
+        Assert.IsTrue(success);
         string json = Storage.readJsonFromDisk("mempool.json");
+        Assert.IsNotNull(json);
         List<Transaction> deserializedMempool = Serialize.deserializeJsonToMempool(json);
+        Assert.IsNotNull(deserializedMempool);
         Assert.IsTrue(deserializedMempool.Count == bchain.mempool.Count);
         for (int i = 0; i < deserializedMempool.Count; i++)
         {

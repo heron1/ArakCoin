@@ -32,7 +32,8 @@ public static class HostsManager
 
     public static List<Host> getNodes()
     {
-        //make a copy of the nodes so that if the internal list mutates, the caller doesn't encounter a changing list
+        //make a copy of the nodes so that if the internal list mutates from another thread,
+        //the caller doesn't encounter a changing list
         lock (hostsLock)
         {
             List<Host> currentNodes;
