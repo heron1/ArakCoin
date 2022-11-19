@@ -132,6 +132,18 @@ public static class Settings
 
 	};
 
+	/**
+	 * Blacklisted nodes can always be added by calling the HostsManager.addNodeToBlacklist function. The protocol
+	 * may also automatically add malicious nodes to the blacklists file. Nevertheless, if some nodes should
+	 * always be manually blacklisted, they can be entered here
+	 */
+	public static List<Host> blacklistedNodes = new List<Host>()
+	{
+		//these nodes are used in networking integration tests, so we blacklist them for the live chain
+		new Host("1.1.1.1", 9000),
+		new Host("2.2.2.2", 9000)
+	};
+
 	#endregion
 
 }

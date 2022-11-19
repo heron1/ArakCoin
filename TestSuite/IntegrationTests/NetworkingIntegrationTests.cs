@@ -425,9 +425,7 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp()
     {
-        var nm = new NetworkMessage(MessageTypeEnum.ECHO, "hi from me");
-        var resp = await Communication.communicateWithNode(nm, new Host("20.173.66.180", 8000));
+        var nodes = HostsManager.getNodes();
         int b = 3;
     }
-    
 }
