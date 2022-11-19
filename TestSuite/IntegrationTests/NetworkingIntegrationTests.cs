@@ -423,9 +423,11 @@ public class NetworkingIntegrationTests
     //to the consensus chain (do this on distributed nodes in functional testing)
 
     [Test]
-    public void Temp()
+    public async Task Temp()
     {
-
+        var nm = new NetworkMessage(MessageTypeEnum.ECHO, "hi from me");
+        var resp = await Communication.communicateWithNode(nm, new Host("20.173.66.180", 8000));
+        int b = 3;
     }
     
 }

@@ -10,8 +10,11 @@ public static class Storage
     {
         try
         {
-            string appdataFolder = 
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ArakCoin");
+            string specialAppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appdataFolder = Path.Combine(specialAppFolder, "ArakCoin");
+            
+            if (!Directory.Exists(specialAppFolder))
+                Directory.CreateDirectory(specialAppFolder);
             
             if (!Directory.Exists(appdataFolder))
                 Directory.CreateDirectory(appdataFolder);

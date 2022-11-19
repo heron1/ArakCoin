@@ -127,7 +127,9 @@ public static class Settings
 	 */
 	public static List<Host> startingNodes = new List<Host>()
 	{
-		new Host("192.168.1.19", 8000)
+		new Host("192.168.1.19", 8000),
+		new Host("20.173.66.180", 8000)
+
 	};
 
 	#endregion
