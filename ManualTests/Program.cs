@@ -41,7 +41,7 @@ namespace ManualTests
             var listener = new NodeListenerServer();
             listener.startListeningServer();
 
-            Console.WriteLine("Press key to continue..");
+            Console.WriteLine("Press Enter to continue (once all hosts running test)..");
             Console.ReadLine();
             Console.WriteLine("Continuing..");
 		
@@ -74,7 +74,7 @@ namespace ManualTests
             var listener = new NodeListenerServer();
             listener.startListeningServer();
 
-            Console.WriteLine("Press Enter to continue..");
+            Console.WriteLine("Press Enter to continue (once all hosts running test)..");
             Console.ReadLine();
             Console.WriteLine("Continuing..");
 
@@ -109,6 +109,12 @@ namespace ManualTests
          */
         public static async Task TestBasicNetworkInteraction()
         {
+            Console.WriteLine("Attempting to establishing consensus chain from network..");
+            NetworkingManager.synchronizeConsensusChainFromNetwork();
+            Console.WriteLine($"Local chain set with length {Global.masterChain.getLength()} " +
+                              $"and accumulative hashpower of" +
+                              $" {Global.masterChain.calculateAccumulativeChainDifficulty()}");
+            
             var listener = new NodeListenerServer();
             listener.startListeningServer();
 
@@ -126,7 +132,7 @@ namespace ManualTests
 
             while (true)
             {
-                Utilities.sleep(10000);
+                Utilities.sleep(10000); //this thread doesn't actually need to do anything else
             }
         }
 

@@ -93,6 +93,7 @@ public class Utilities
 	{
 		Console.WriteLine($"Exception log message: {exceptionLog}");
 		Debug.WriteLine($"Exception log message: {exceptionLog}");
+		Console.Error.WriteLine($"Exception log message: {exceptionLog}");
 
 		if (Settings.terminateProgramOnExceptionLog)
 			throw new Exception($"exceptionLog triggered and terminateProgramOnExceptionLog was set to true. " +

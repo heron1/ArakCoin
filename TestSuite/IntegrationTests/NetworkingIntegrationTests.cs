@@ -127,12 +127,16 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task TestLocalNodeListenerResponses()
     {
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
-
-
         //these tests will validate the responses received from the nodeListener are correct using the higher level
         //communicateWithnode function in the Communication class
-        LogTestMsg("Testing TestNodeListenerLocally..");
+        LogTestMsg("Testing TestLocalNodeListenerResponses..");
+        
+        //for these tests, we remove the blacklisted nodes that we'll be creating
+        Settings.manuallyBlacklistedNodes = new List<Host>(); //set empty
+        HostsManager.removeNodeFromBlacklist(new Host("1.1.1.1", 9000)); //test node 1
+        HostsManager.removeNodeFromBlacklist(new Host("2.2.2.2", 9000)); //test node 2
+        
+        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
         
         //create a listener as the node, and start it
         NodeListenerServer listener = new NodeListenerServer();
@@ -327,10 +331,6 @@ public class NetworkingIntegrationTests
         receivedNodes = Serialize.deserializeJsonToHosts(receivedNetworkMessage.rawMessage);
         Assert.Contains(registeredNode, receivedNodes);
 
-        
-
-
-        
         //each test must stop the listening server
         listener.stopListeningServer();
         

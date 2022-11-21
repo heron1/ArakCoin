@@ -18,7 +18,23 @@ public static class HostsManager
         //starting nodes in the Settings.startingNodes field exist in the hosts file. Also, if this host is a
         //node, it will include itself as well in the hosts file. Note that if no nodes are successfully
         //loaded, the nodes list will be empty at program start. Will also remove any blacklisted nodes
-        loadNodes();
+        
+        loadNodes(); //load the nodes from disk into memory
+
+        //add any hard coded blacklisted nodes to the blacklist
+        List<Host>? blacklistedNodesLoaded = loadBlacklistedNodesFromDisk();
+        var blacklistedNodes = new List<Host>();
+        if (blacklistedNodesLoaded is not null)
+        {
+            blacklistedNodes = blacklistedNodesLoaded;
+        }
+        foreach (var blacklistedNode in Settings.manuallyBlacklistedNodes)
+        {
+            if (!blacklistedNodes.Contains(blacklistedNode))
+                addNodeToBlacklist(blacklistedNode);
+        }
+        
+        //add any hard coded starting nodes
         foreach (var host in Settings.startingNodes)
         {
             if (!nodes.Contains(host))
@@ -27,17 +43,80 @@ public static class HostsManager
             }
         }
 
-        //remove any hard coded blacklisted nodes
-        var loadedNodes = getNodes();
-        foreach (var node in loadedNodes)
-        {
-            if (Settings.blacklistedNodes.Contains(node))
-                removeNode(node);
-        }
-
         //add this host to the hosts file if it is set to be a node 
-        if (Settings.isNode && !loadedNodes.Contains(new Host(Settings.nodeIp, Settings.nodePort)))
+        if (Settings.isNode && !nodes.Contains(new Host(Settings.nodeIp, Settings.nodePort)))
             addNode(new Host(Settings.nodeIp, Settings.nodePort));
+    }
+    
+     /**
+     * Saves the nodes in memory to the hostsfile on disk. If the hostsfile dosen't exist, it will be created.
+     * Returns whether the operation succeeded
+     */
+    private static bool saveNodes()
+    {
+        lock (hostsLock)
+        {
+            var jsonNodes = Serialize.serializeHostsToJson(nodes);
+            if (jsonNodes is null)
+                return false;
+
+            if (!Storage.writeJsonToDisk(jsonNodes, hostsFilename))
+                return false;
+
+            return true;
+        }
+    }
+
+    /*
+     * Loads nodes from disk and stores them in the global nodes property. Returns whether the operation
+     * succeeded. Will filter out any blacklisted nodes if a blacklist exists.
+     */
+    private static bool loadNodes()
+    {
+        lock (hostsLock)
+        {
+            //load nodes
+            string? jsonNodes = Storage.readJsonFromDisk(hostsFilename);
+            if (jsonNodes is null)
+                return false;
+
+            List<Host>? deserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
+            if (deserializedNodes is null)
+                return false;
+
+            nodes = deserializedNodes;
+            
+            //load blacklist, remove any nodes in it from the loaded nodes
+            var blacklistedNodes = loadBlacklistedNodesFromDisk();
+            if (blacklistedNodes is null)
+                return true; //the blacklist doesn't exist, so stop here and return true 
+
+            foreach (var blacklistedNode in blacklistedNodes)
+            {
+                nodes.Remove(blacklistedNode);
+            }
+            
+            return true;
+        }
+    }
+    
+    /** 
+     * Loads blacklisted nodes from disk and returns them as a list of Hosts. Returns null if this fails
+     */
+    private static List<Host>? loadBlacklistedNodesFromDisk()
+    {
+        lock (hostsLock)
+        {
+            var jsonNodes = Storage.readJsonFromDisk(blacklistedHostsFilename);
+            if (jsonNodes is null)
+                return null;
+
+            var blacklistedDeserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
+            if (blacklistedDeserializedNodes is null)
+                return null;
+
+            return blacklistedDeserializedNodes;
+        }
     }
 
     public static List<Host> getNodes()
@@ -46,36 +125,28 @@ public static class HostsManager
         //the caller doesn't encounter a changing list
         lock (hostsLock)
         {
-            List<Host> currentNodes;
-            currentNodes = nodes.ToList();
-
-            return currentNodes;
+            return nodes.ToList();
         }
     }
 
     /**
      * Adds the given node to memory if it doesn't yet exist, and writes it to the hostsfile on disk as well.
      * Returns whether the node was succesfully written to the hostsfile or not. Does not add a node if it's
-     * blacklisted. An optional second parameter can add the node and bypass the blacklist check,
-     * however it this happens, it will be removed when the nodes are loaded from disk again
-     * (where another blacklist check will occur)
+     * blacklisted
      */
-    public static bool addNode(Host node, bool bypassBlacklist = false)
+    public static bool addNode(Host node)
     {
         lock (hostsLock)
         {
             if (nodes.Contains(node)) //node already exists
                 return false;
 
-            if (!bypassBlacklist)
+            var blacklistedNodes = loadBlacklistedNodesFromDisk();
+            if (blacklistedNodes is not null)
             {
-                var blacklistedNodes = loadBlacklistedNodesFromDisk();
-                if (blacklistedNodes is not null)
-                {
-                    //blacklist exists, so see if the proposed node to be added resides within it
-                    if (blacklistedNodes.Contains(node))
-                        return false; //node is blacklisted, do not add it
-                }
+                //blacklist exists, so see if the proposed node to be added resides within it
+                if (blacklistedNodes.Contains(node))
+                    return false; //node is blacklisted, do not add it
             }
             
             nodes.Add(node);
@@ -137,75 +208,33 @@ public static class HostsManager
     }
 
     /**
-     * Saves the nodes in memory to the hostsfile on disk. If the hostsfile dosen't exist, it will be created.
-     * Returns whether the operation succeeded
+     * Attempts to remove the given node the blacklist.
+     * Returns true if the operation removed a node, false otherwise
      */
-    public static bool saveNodes()
+    public static bool removeNodeFromBlacklist(Host node)
     {
         lock (hostsLock)
         {
-            var jsonNodes = Serialize.serializeHostsToJson(nodes);
-            if (jsonNodes is null)
-                return false;
-
-            if (!Storage.writeJsonToDisk(jsonNodes, hostsFilename))
-                return false;
-
-            return true;
-        }
-    }
-
-    /*
-     * Loads nodes from disk and stores them in the global nodes property. Returns whether the operation
-     * succeeded. Will filter out any blacklisted nodes if a blacklist exists.
-     */
-    public static bool loadNodes()
-    {
-        lock (hostsLock)
-        {
-            //load nodes
-            string? jsonNodes = Storage.readJsonFromDisk(hostsFilename);
-            if (jsonNodes is null)
-                return false;
-
-            List<Host>? deserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
-            if (deserializedNodes is null)
-                return false;
-
-            nodes = deserializedNodes;
-            
-            //load blacklist, remove any nodes in it from the loaded nodes
             var blacklistedNodes = loadBlacklistedNodesFromDisk();
             if (blacklistedNodes is null)
-                return true; //the blacklist doesn't exist, so stop here and return true 
+                return false; //no blacklist exists, so no node can be removed from it
 
-            foreach (var blacklistedNode in blacklistedNodes)
-            {
-                nodes.Remove(blacklistedNode);
-            }
+            if (!blacklistedNodes.Remove(node))
+                return false; //node is not blacklisted
             
+            var jsonNodes = Serialize.serializeHostsToJson(blacklistedNodes);
+            if (jsonNodes is null)
+                return false; //serialization failure
+
+            if (!Storage.writeJsonToDisk(jsonNodes, blacklistedHostsFilename))
+                return false;
+            
+            Utilities.log($"Successfully removed node {node} from the node blacklist file..");
             return true;
         }
     }
-    
-    /** 
-     * Loads blacklisted nodes from disk and returns them as a list of Hosts. Returns null if this fails
-     */
-    public static List<Host>? loadBlacklistedNodesFromDisk()
-    {
-        lock (hostsLock)
-        {
-            var jsonNodes = Storage.readJsonFromDisk(blacklistedHostsFilename);
-            if (jsonNodes is null)
-                return null;
 
-            var blacklistedDeserializedNodes = Serialize.deserializeJsonToHosts(jsonNodes);
-            if (blacklistedDeserializedNodes is null)
-                return null;
-
-            return blacklistedDeserializedNodes;
-        }
-    }
+   
 
     /**
      * Clear stored network nodes both from memory and the hosts file on disk. Returns whether operation succeeded.

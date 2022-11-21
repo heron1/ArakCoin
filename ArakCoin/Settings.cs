@@ -41,9 +41,18 @@ public static class Settings
 
 	
 	#region Regular Settings
+
 	/**
 	 * These settings need not be fixed and may be adjustable without affecting the blockchain protocol
+	 * todo: Autogenerate these values from a settings file at runtime, then the values here won't be used.
 	 */
+
+	/**
+	 * The current version of the settings file. If the fields here change then the version will increase and any
+	 * old settings files will become invalid and be replaced with a new default one. The program should however store
+	 * a copy of the old settings file before replacing it, so that the old settings values aren't lost.
+	 */
+	public static int settingsVersion = 1;
 	
 	/**
 	 * Decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called
@@ -134,10 +143,11 @@ public static class Settings
 
 	/**
 	 * Blacklisted nodes can always be added by calling the HostsManager.addNodeToBlacklist function. The protocol
-	 * may also automatically add malicious nodes to the blacklists file. Nevertheless, if some nodes should
-	 * always be manually blacklisted, they can be entered here
+	 * may also automatically add malicious nodes to the blacklists file via that method.
+	 * Nevertheless, if some nodes should always be manually blacklisted without calling that method,
+	 * they can be entered here
 	 */
-	public static List<Host> blacklistedNodes = new List<Host>()
+	public static List<Host> manuallyBlacklistedNodes = new List<Host>()
 	{
 		//these nodes are used in networking integration tests, so we blacklist them for the live chain
 		new Host("1.1.1.1", 9000),

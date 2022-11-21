@@ -30,6 +30,36 @@ public static class NetworkingManager
     }
 
     /**
+     * Attempts to retrieve the consensus blockchain from the network and synchronize this node with it.
+     * 
+     * This function requests the hosts file from every known node, and updates the local hosts file with any
+     * discovered new nodes. It then requests the local chain from all these nodes, and does a chain comparison
+     * with every received response chain, and the local chain. The winning chain is stored as the new local chain,
+     * which should represent the consensus network chain.
+     */
+    public static void synchronizeConsensusChainFromNetwork()
+    {
+        NetworkingManager.updateHostsFileFromKnownNodes(); //store all known nodes from the network in the hosts file
+
+        List<Blockchain> candidateChains = new List<Blockchain>();
+        candidateChains.Add(Global.masterChain); //the local chain is always added first, to win any tiebreakers
+            
+        //now add every local chain that exists at every known node to the candidate chains
+        foreach (var node in HostsManager.getNodes())
+        {
+            var receivedChain = getBlockchainFromOtherNode(node);
+            if (receivedChain is not null)
+                candidateChains.Add(receivedChain);
+        }
+
+        //establish the winning blockchain from the network, and set this local chain to it.
+        //If null is returned, do nothing (keep the local chain)
+        var winningChain = Blockchain.establishWinningChain(candidateChains);
+        if (winningChain is not null)
+            Global.masterChain.replaceBlockchain(winningChain);
+    } 
+
+    /**
      * Broadcasts the given block to the P2P network as the next valid block in the consensus chain. Returns false if
      * the local serialization of the block fails, otherwise true. Does not check whether or not nodes accept the
      * block or not, or even if the broadcast was successful.
@@ -60,7 +90,7 @@ public static class NetworkingManager
     {
         //todo - async version? necessary for large amount of hosts -> difficult with lock but do it
         //(ensure tests are written first)
-        lock (HostsManager.hostsLock)
+        lock (HostsManager.hostsLock) //but is a lock necessary now that getNodes returns a copy only?
         {
             var newNodes = new List<Host>();
             foreach (var node in HostsManager.getNodes())

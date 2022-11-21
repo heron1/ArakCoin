@@ -53,10 +53,8 @@ public class Blockchain
 
 			if (overwriteMempool)
 				this.mempool = newChain.mempool;
-			else
-			{
-				sanitizeMempool(); //mutate current mempool so that it's valid with the replaced chain
-			}
+			
+			sanitizeMempool(); //mutate current mempool so that it's valid with the replaced chain
 		}
 	}
 
