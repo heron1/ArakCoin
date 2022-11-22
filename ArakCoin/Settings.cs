@@ -13,19 +13,6 @@ namespace ArakCoin;
  * generated settings.json file (not here), particularly the public and private keys, and ensure there is at least one
  * valid startingNode that is online. If the user wishes to be a node, then the nodeIp must be set to the user's
  * publicly accessible IP address, along with the nodePort, for TCP sockets connections.
- *
- * == IMPORTANT INFORMATION FOLLOWS REGARDING PUBLIC/PRIVATE KEYPAIRS ===
- * Whilst the program will attempt to backup an old settings file if a new version exists, the user is
- * heavily encouraged to store a copy of their private key elsewhere in case the settings file is lost. The user
- * is encouraged to generate a public/private keypair that adheres to the Ed25519 standard themselves via a trusted
- * third party method that introduces entropy. Example keys can be generated via the TestGenerateKeyPair() function
- * in the TestSuite project (eg via running: dotnet test --filter "TestGenerateKeyPair"), however this method may not
- * meet recommended external entropy requirements for the creation of keypairs, and its use is only recommended for
- * testing purposes.
- *
- * Note: A higher level UI may automatically generate and populate the settings file from input user values, thus not
- * requiring editing of the settings.json file directly - however this is a higher level detail that we're not
- * concerned with here.
  */
 public class Settings
 {
@@ -109,8 +96,6 @@ public class Settings
 		
 		Utilities.log($"Successfully generated new settings file {jsonFilename}..");
 	}
-	
-	//todo this
 	
 	/**
 	 * Decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called

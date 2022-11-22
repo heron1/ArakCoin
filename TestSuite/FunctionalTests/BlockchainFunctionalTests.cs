@@ -206,10 +206,4 @@ public class BlockchainFunctionalTests
 		LogTestMsg($"\tThe winning chain has been correctly asserted as the " +
 		           $"one with: {winningChain.getLength()} blocks");
 	}
-
-	[Test]
-	public void TestByzantineConsensus()
-	{
-		//TODO Three separate nodes communicate different blockchains. Assert all nodes converge to the correct chain
-	}
 }
