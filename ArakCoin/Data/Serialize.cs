@@ -16,8 +16,11 @@ public static class Serialize
 
     static Serialize()
     {
-        //fix DOS exploit in Newtonsoft
-        JsonConvert.DefaultSettings = () => new JsonSerializerSettings { MaxDepth = 128 }; 
+        JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+        {
+            MaxDepth = 128, //fix DOS exploit in Newtonsoft
+            MissingMemberHandling = MissingMemberHandling.Error //only load complete JSON objects
+        }; 
     }
     
     //attempts to serialize the input block into a json string. If this fails, returns null
@@ -158,5 +161,39 @@ public static class Serialize
         }
 
         return hostList;
+    }
+
+    /**
+     * This performs serializaion of the static Settings.cs members - no input argument is necessary. Since the
+     * serialized settings file is intended to be edited by users, it is made human readable
+     */
+    public static string? serializeSettingsToJson()
+    {
+        try
+        {
+            return JsonConvert.SerializeObject(new Settings(), Formatting.Indented);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /**
+     * This performs static deserialization into the Settings.cs file's static members from the input json - no type is
+     * returned but instead a boolean as to whether the settings were successfully loaded or not
+     */
+    public static bool deserializeJsonToSettings(string jsonSettings)
+    {
+        try
+        {
+            JsonConvert.DeserializeObject<Settings>(jsonSettings);
+        }
+        catch
+        {
+            return false;
+        }
+
+        return true;
     }
 }

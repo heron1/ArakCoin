@@ -17,11 +17,11 @@ public class BlockchainIntegration
 	public void Setup()
 	{
 		// put blockchain protocol settings to low values integration tests so they don't take too long
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Settings.BLOCK_INTERVAL_SECONDS = 2;
-		Settings.INITIALIZED_DIFFICULTY = 2;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Protocol.BLOCK_INTERVAL_SECONDS = 2;
+		Protocol.INITIALIZED_DIFFICULTY = 2;
 		
-		Settings.BLOCK_REWARD = 20;
+		Protocol.BLOCK_REWARD = 20;
 		Settings.nodePublicKey = testPublicKey;
 		Settings.nodePrivateKey = testPrivateKey;
 		
@@ -126,7 +126,7 @@ public class BlockchainIntegration
 
 		// normal block but with a timestamp in the future equal to half of the time variance allowance
 		nextBlock = BlockFactory.createNewBlock(bchain, null);
-		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE / 2;
+		nextBlock.timestamp += Protocol.DIFFERING_TIME_ALLOWANCE / 2;
 
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
@@ -142,7 +142,7 @@ public class BlockchainIntegration
 	
 		// normal block but with a timestamp in the past equal to half of the time variance allowance
 		nextBlock = BlockFactory.createNewBlock(bchain, null);
-		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE / 2;
+		nextBlock.timestamp -= Protocol.DIFFERING_TIME_ALLOWANCE / 2;
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
@@ -248,7 +248,7 @@ public class BlockchainIntegration
 		
 		// test block with legal timestamp but which is invalid within the context of our test blockchain (over)
 		nextBlock = BlockFactory.createNewBlock(bchain, null);
-		nextBlock.timestamp += Settings.DIFFERING_TIME_ALLOWANCE * 2;
+		nextBlock.timestamp += Protocol.DIFFERING_TIME_ALLOWANCE * 2;
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
@@ -264,7 +264,7 @@ public class BlockchainIntegration
 		
 		// test block with legal timestamp but which is invalid within the context of our test blockchain (under)
 		nextBlock = BlockFactory.createNewBlock(bchain, null);
-		nextBlock.timestamp -= Settings.DIFFERING_TIME_ALLOWANCE * 2;
+		nextBlock.timestamp -= Protocol.DIFFERING_TIME_ALLOWANCE * 2;
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
@@ -406,25 +406,25 @@ public class BlockchainIntegration
 	
 		// adding 1 block should give the chain an accumulative difficulty equal to the initialized difficulty
 		BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
-		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY);
+		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Protocol.INITIALIZED_DIFFICULTY);
 		Assert.IsTrue(newChain.calculateAccumulativeChainDifficulty() == accumDifficulty);
 		Assert.IsTrue(newChain.getLength() == 2);
 		LogTestMsg($"\tAccum. difficulty of {accumDifficulty} at {newChain.getLength()} blocks with " +
 		           $"current chain difficulty {newChain.currentDifficulty} asserted");
 	
-		while (newChain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
+		while (newChain.getLength() < Protocol.DIFFICULTY_INTERVAL_BLOCKS)
 		{
 			BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
 		}
 		// accumulative difficulty should be equal to the hash difficulty of chain length minus 1 before the first
 		// update difficulty event (due to ignoring genesis block)
-		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY)
+		accumDifficulty = Utilities.convertDifficultyToHashAttempts(Protocol.INITIALIZED_DIFFICULTY)
 		                  * (newChain.getLength() - 1);
 		Assert.IsTrue(newChain.calculateAccumulativeChainDifficulty() == accumDifficulty);
 		LogTestMsg($"\tAccum. difficulty of {accumDifficulty} at {newChain.getLength()} blocks with " +
 		           $"current chain difficulty {newChain.currentDifficulty} asserted");
 	
-		while (newChain.getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS * 2)
+		while (newChain.getLength() < Protocol.DIFFICULTY_INTERVAL_BLOCKS * 2)
 		{
 			BlockFactory.mineNextBlockAndAddToBlockchain(newChain);
 		}
@@ -432,10 +432,10 @@ public class BlockchainIntegration
 		int lastMinedDifficulty = 
 			newChain.getBlockByIndex(newChain.getLength() - 1).difficulty; // difficulty prior to 2nd difficulty adjustment
 		BigInteger firstIntervalAccumulativeDifficulty =
-			Utilities.convertDifficultyToHashAttempts(Settings.INITIALIZED_DIFFICULTY) 
-			* (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1); // - 1 to subtract genesis block from this interval
+			Utilities.convertDifficultyToHashAttempts(Protocol.INITIALIZED_DIFFICULTY) 
+			* (Protocol.DIFFICULTY_INTERVAL_BLOCKS - 1); // - 1 to subtract genesis block from this interval
 		BigInteger secondIntervalAccumulativeDifficulty = 
-			Utilities.convertDifficultyToHashAttempts(lastMinedDifficulty) * Settings.DIFFICULTY_INTERVAL_BLOCKS;
+			Utilities.convertDifficultyToHashAttempts(lastMinedDifficulty) * Protocol.DIFFICULTY_INTERVAL_BLOCKS;
 		accumDifficulty = firstIntervalAccumulativeDifficulty;
 		accumDifficulty += secondIntervalAccumulativeDifficulty;
 		Assert.IsTrue(accumDifficulty == newChain.calculateAccumulativeChainDifficulty());
@@ -449,9 +449,9 @@ public class BlockchainIntegration
 		LogTestMsg("Testing TestWinningChainComparison..");
 	
 		// both chains to have a light difficulty
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Settings.BLOCK_INTERVAL_SECONDS = 1;
-		Settings.INITIALIZED_DIFFICULTY = 1;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Protocol.BLOCK_INTERVAL_SECONDS = 1;
+		Protocol.INITIALIZED_DIFFICULTY = 1;
 		Blockchain chain1 = new Blockchain();
 		Blockchain chain2 = new Blockchain();
 		
@@ -476,9 +476,9 @@ public class BlockchainIntegration
 		Assert.IsTrue(Blockchain.establishWinningChain(new List<Blockchain>() {chain1, chain2}) == chain1);
 		
 		// now introduce a new blockchain with higher difficulty settings
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Settings.BLOCK_INTERVAL_SECONDS = 2;
-		Settings.INITIALIZED_DIFFICULTY = 2;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Protocol.BLOCK_INTERVAL_SECONDS = 2;
+		Protocol.INITIALIZED_DIFFICULTY = 2;
 		Blockchain chain3 = new Blockchain();
 		
 		// populate it with 15 blocks. This chain should have both greater length and accumulative hashpower than other chains
@@ -489,9 +489,9 @@ public class BlockchainIntegration
 		
 		// put settings back to the way they were previously for chain1 & chain 2
 		// chain3 should now have the greatest accumulative hashpower, but be invalid according to the protocol settings
-		Settings.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Settings.BLOCK_INTERVAL_SECONDS = 1;
-		Settings.INITIALIZED_DIFFICULTY = 1;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
+		Protocol.BLOCK_INTERVAL_SECONDS = 1;
+		Protocol.INITIALIZED_DIFFICULTY = 1;
 		
 		// assert both length and hashpower of chain3 is greater than chain1 or chain2
 		Assert.IsTrue(chain3.getLength() > chain1.getLength() && chain3.getLength() > chain2.getLength());

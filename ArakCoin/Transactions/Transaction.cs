@@ -104,7 +104,7 @@ public class Transaction
 	        return false;
 
         TxOut coinbaseTxOut = coinbaseTx.txOuts[0];
-        long correctReward = Settings.BLOCK_REWARD; //initialize correctReward as the block reward
+        long correctReward = Protocol.BLOCK_REWARD; //initialize correctReward as the block reward
         foreach (var tx in block.transactions.Skip(1)) //loop through normal (non-coinbase) transactions
         {
 	        //then add the miner fees from each normal transaction in the block
@@ -210,14 +210,14 @@ public class Transaction
 			return false;
 	    
 	    //assert mempool max tx count isn't breached (keep 1 lower to allow coinbase tx to also be included)
-	    if (!(txPool.Count < Settings.MAX_TRANSACTIONS_PER_BLOCK - 1))
+	    if (!(txPool.Count < Protocol.MAX_TRANSACTIONS_PER_BLOCK - 1))
 		    return false;
 
 	    //lastly assert the miner fee meets threshold requirements for this node
 	    long minerFee = 0;
 	    foreach (var txOut in tx.txOuts)
 	    {
-		    if (txOut.address == Settings.FEE_ADDRESS)
+		    if (txOut.address == Protocol.FEE_ADDRESS)
 		    {
 			    minerFee = txOut.amount;
 			    break;
@@ -250,7 +250,7 @@ public class Transaction
             for (int i = 0; i < tx.txOuts.Length; i++)
             {
 	            //don't include burnt coins used as miner fees in a new UTxOut (these will be received in coinbase tx)
-	            if (tx.txOuts[i].address == Settings.FEE_ADDRESS)
+	            if (tx.txOuts[i].address == Protocol.FEE_ADDRESS)
 		            continue;
 	            
                 TxOut txout = tx.txOuts[i];
@@ -283,7 +283,7 @@ public class Transaction
 	    
 	    foreach (var txOut in transaction.txOuts)
 	    {
-		    if (txOut.address == Settings.FEE_ADDRESS)
+		    if (txOut.address == Protocol.FEE_ADDRESS)
 			    minerCoins += txOut.amount;
 	    }
 

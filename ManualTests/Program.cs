@@ -129,7 +129,7 @@ namespace ManualTests
             
             //begin node discovery & registration as a new Task in the background
             Global.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
-
+            
             while (true)
             {
                 Utilities.sleep(10000); //this thread doesn't actually need to do anything else

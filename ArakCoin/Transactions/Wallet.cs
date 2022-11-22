@@ -20,7 +20,7 @@ public class Wallet
         long totalCirculatingSupply = 0;
         foreach (var uTxOut in blockchain.uTxOuts)
         {
-            if (uTxOut.address != Settings.FEE_ADDRESS)
+            if (uTxOut.address != Protocol.FEE_ADDRESS)
                 totalCirculatingSupply += uTxOut.amount;
         }
         

@@ -7,7 +7,7 @@ public enum MessageTypeEnum
 {
     ERROR, //error occurred or message not recognized as adhering to networking protocol
     INFO, //an enum indicating special information within the raw message
-    ECHO, //node to send back the exact same received message, provided its <= Settings.echoCharLimit
+    ECHO, //node to send back the exact same received message, provided its <= Settings.echoCharLimi =
     GETCHAIN , //client request to retrieve this node's blockchain. Client message content is ignored
     GETBLOCK, //client requests a specific block by ID belonging to this node's chain. Client message to contain the ID
     NEXTBLOCK, //client sends a block to this node. If it's a valid next block, this node will append it to its chain,

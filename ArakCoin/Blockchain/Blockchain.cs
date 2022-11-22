@@ -11,7 +11,7 @@ public class Blockchain
 {
 	//global blockchain state
 	public LinkedList<Block> blockchain = new LinkedList<Block>();
-	public int currentDifficulty = Settings.INITIALIZED_DIFFICULTY;
+	public int currentDifficulty = Protocol.INITIALIZED_DIFFICULTY;
 	public UTxOut[] uTxOuts = new UTxOut[]{}; //list of unspent tx outputs for this blockchain
 	
 	//local temporary state
@@ -112,18 +112,18 @@ public class Blockchain
 			if (lastBlock is null)
 				return;
 
-			if (lastBlock.index % Settings.DIFFICULTY_INTERVAL_BLOCKS == 0) // difficulty update interval reached
+			if (lastBlock.index % Protocol.DIFFICULTY_INTERVAL_BLOCKS == 0) // difficulty update interval reached
 			{
-				int lastDifficultyIndex = lastBlock.index - (Settings.DIFFICULTY_INTERVAL_BLOCKS - 1);
+				int lastDifficultyIndex = lastBlock.index - (Protocol.DIFFICULTY_INTERVAL_BLOCKS - 1);
 				Block? lastDifficultyUpdateBlock = getBlockByIndex(lastDifficultyIndex);
 				
 				// The blockchain's length must be at least as long as DIFFICULTY_INTERVAL_BLOCKS for this conditional to have been
 				// entered into. If it's not, the blockchain is in an invalid state. We will log this, and exit this function
 				// Alternatively, if lastDifficultyUpdateBlock is null, this is also an unexpected event
-				if (getLength() < Settings.DIFFICULTY_INTERVAL_BLOCKS)
+				if (getLength() < Protocol.DIFFICULTY_INTERVAL_BLOCKS)
 				{
 					string exceptionStr =
-						$"Expected blockchain length of at least: {Settings.DIFFICULTY_INTERVAL_BLOCKS} but instead" +
+						$"Expected blockchain length of at least: {Protocol.DIFFICULTY_INTERVAL_BLOCKS} but instead" +
 						$"the length is: {getLength()}. Occurrence: updateDifficulty() inner conditional, with" +
 						$"lastBlock.index value of {lastBlock.index}";
 					Utilities.exceptionLog(exceptionStr);
@@ -135,7 +135,7 @@ public class Blockchain
 					string exceptionStr =
 						$"Expected block at index {lastDifficultyIndex}, but received null. Occurrence: updateDifficulty() inner " +
 						$"conditional, with lastBlock.index value of {lastBlock.index}, and DIFFICULTY_INTERVAL_BLOCKS value of" +
-						$"{Settings.DIFFICULTY_INTERVAL_BLOCKS}";
+						$"{Protocol.DIFFICULTY_INTERVAL_BLOCKS}";
 					Utilities.exceptionLog(exceptionStr);
 					
 					return;
@@ -146,12 +146,12 @@ public class Blockchain
 				actualTimeTakenForDifficultyInterval = Math.Max(1, actualTimeTakenForDifficultyInterval);
 				
 				int expectedTimeTakenForDifficultyInterval =
-					Settings.BLOCK_INTERVAL_SECONDS * Settings.DIFFICULTY_INTERVAL_BLOCKS;
+					Protocol.BLOCK_INTERVAL_SECONDS * Protocol.DIFFICULTY_INTERVAL_BLOCKS;
 
 				int lowerTimeBound = expectedTimeTakenForDifficultyInterval /
-				                     Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
+				                     Protocol.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
 				int higherTimeBound = expectedTimeTakenForDifficultyInterval *
-				                      Settings.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
+				                      Protocol.DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE;
 				
 				if (actualTimeTakenForDifficultyInterval < lowerTimeBound)
 				{
@@ -160,7 +160,7 @@ public class Blockchain
 
 					// change difficulty with proportion to how far off actual and expected time taken are
 					while (actualTimeTakenForDifficultyInterval < expectedTimeTakenForDifficultyInterval / 
-					       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
+					       Math.Pow(Protocol.DIFFICULTY_BASE, difficultyChange + 1))
 					{
 						difficultyChange++;
 					}
@@ -175,7 +175,7 @@ public class Blockchain
 
 					// change difficulty with proportion to how far off actual and expected time taken are
 					while (actualTimeTakenForDifficultyInterval > expectedTimeTakenForDifficultyInterval * 
-					       Math.Pow(Settings.DIFFICULTY_BASE, difficultyChange + 1))
+					       Math.Pow(Protocol.DIFFICULTY_BASE, difficultyChange + 1))
 					{
 						difficultyChange++;
 					}
@@ -230,7 +230,7 @@ public class Blockchain
 			return false;
 		
 		//however it cannot exceed the tx limit per block as per the protocol
-		if (block.transactions.Length > Settings.MAX_TRANSACTIONS_PER_BLOCK)
+		if (block.transactions.Length > Protocol.MAX_TRANSACTIONS_PER_BLOCK)
 			return false;
 
 		var tempPool = new List<Transaction>(); //temp new tx pool for block validation
@@ -320,11 +320,11 @@ public class Blockchain
 			return true;
 		
 		// ensure new block is not too far into the past with respect to the last block
-		if (lastBlock.timestamp - Settings.DIFFERING_TIME_ALLOWANCE > block.timestamp)
+		if (lastBlock.timestamp - Protocol.DIFFERING_TIME_ALLOWANCE > block.timestamp)
 			return false;
 		
 		// ensure new block is not too far into the future from this hosts own local time
-		if (block.timestamp - Settings.DIFFERING_TIME_ALLOWANCE > Utilities.getTimestamp())
+		if (block.timestamp - Protocol.DIFFERING_TIME_ALLOWANCE > Utilities.getTimestamp())
 			return false;
 
 		return true; 
@@ -374,7 +374,7 @@ public class Blockchain
 			}
 
 			//assert total circulating coin supply is valid
-			long expectedSupply = (rebuildChain.getLength() - 1) * Settings.BLOCK_REWARD;
+			long expectedSupply = (rebuildChain.getLength() - 1) * Protocol.BLOCK_REWARD;
 			long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
 			if (expectedSupply != actualSupply)
 				return false;

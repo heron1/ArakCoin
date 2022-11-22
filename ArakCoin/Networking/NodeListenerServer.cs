@@ -119,7 +119,7 @@ public class NodeListenerServer : IDisposable
         {
             case MessageTypeEnum.ECHO:
                 if (networkMessage.rawMessage.Length > Settings.echoCharLimit)
-                    return createErrorNetworkMessage($"ECHO requests must be {Settings.echoCharLimit} chars");
+                    return createErrorNetworkMessage($"ECHO requests must be {Settings.echoCharLimit} char =");
                 return new NetworkMessage(MessageTypeEnum.ECHO, networkMessage.rawMessage);
             case MessageTypeEnum.GETCHAIN:
                 var serializedBlockchain = Serialize.serializeBlockchainToJson(Global.masterChain);

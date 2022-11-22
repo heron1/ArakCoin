@@ -23,8 +23,8 @@ public class ManualTests
 	public void Setup()
 	{
 		bchain = new Blockchain();
-		Settings.nodePrivateKey = testPrivateKey;
-		Settings.nodePublicKey = testPublicKey;
+		Settings.nodePrivateKey  = testPrivateKey;
+		Settings.nodePublicKey  = testPublicKey;
 	}
 	
 	[Test]
@@ -64,13 +64,13 @@ public class ManualTests
 			switch (p)
 			{
 				case (0):
-					Settings.nodePublicKey = testPublicKey;
+					Settings.nodePublicKey  = testPublicKey;
 					break;
 				case(1):
-					Settings.nodePublicKey = testPublicKey2;
+					Settings.nodePublicKey  = testPublicKey2;
 					break;
 				default:
-					Settings.nodePublicKey = testPublicKey3;
+					Settings.nodePublicKey  = testPublicKey3;
 					break;
 			}
 	
@@ -110,7 +110,7 @@ public class ManualTests
 				{
 					foreach (var txOut in tx.txOuts)
 					{
-						if (txOut.address != Settings.FEE_ADDRESS)
+						if (txOut.address != Protocol.FEE_ADDRESS)
 							txRecords.Add(new TxRecord(sender_pub, txOut.address, txOut.amount,
 								tx.id, minerFee));
 					}
@@ -136,8 +136,8 @@ public class ManualTests
 			           $"\n\thash: {nextBlock.calculateBlockHash()}, " +
 			           $"\n\tmined by: {Settings.nodePublicKey} " +
 			           $"\n\treward: {nextBlock.transactions[0].txOuts[0].amount} coins " +
-			           $"({Settings.BLOCK_REWARD} block reward, " +
-			           $"{nextBlock.transactions[0].txOuts[0].amount - Settings.BLOCK_REWARD} fees)");
+			           $"({Protocol.BLOCK_REWARD} block reward, " +
+			           $"{nextBlock.transactions[0].txOuts[0].amount - Protocol.BLOCK_REWARD} fees)");
 
 			LogTestMsg($"\nBalances after block mine: " +
 			           $"\n\t{testPublicKey.Substring(0, 3)}..: " +

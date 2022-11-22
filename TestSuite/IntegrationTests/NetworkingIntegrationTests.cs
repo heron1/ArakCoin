@@ -25,10 +25,10 @@ public class NetworkingIntegrationTests
     [SetUp]
     public void Setup()
     {
-        Settings.nodePublicKey = testPublicKey;
-        Settings.BLOCK_REWARD = 20;
-        Settings.minMinerFee = 0;
-        Settings.echoCharLimit = 1000;
+        Settings.nodePublicKey  = testPublicKey;
+        Protocol.BLOCK_REWARD = 20;
+        Settings.minMinerFee  = 0;
+        Settings.echoCharLimit  = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);
 
         ArakCoin.Global.masterChain = new Blockchain();
@@ -132,7 +132,7 @@ public class NetworkingIntegrationTests
         LogTestMsg("Testing TestLocalNodeListenerResponses..");
         
         //for these tests, we remove the blacklisted nodes that we'll be creating
-        Settings.manuallyBlacklistedNodes = new List<Host>(); //set empty
+        Settings.manuallyBlacklistedNodes  = new List<Host>(); //set empty
         HostsManager.removeNodeFromBlacklist(new Host("1.1.1.1", 9000)); //test node 1
         HostsManager.removeNodeFromBlacklist(new Host("2.2.2.2", 9000)); //test node 2
         

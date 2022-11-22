@@ -35,8 +35,8 @@ public static class Storage
         string text;
         try
         {
-            string appdataFolder = 
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ArakCoin");
+            string specialAppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appdataFolder = Path.Combine(specialAppFolder, "ArakCoin");
             
             if (!Directory.Exists(appdataFolder))
                 Directory.CreateDirectory(appdataFolder);
@@ -49,5 +49,23 @@ public static class Storage
         }
 
         return text;
+    }
+
+    //delete the given filename from disk
+    public static bool deleteFile(string filename)
+    {
+        string specialAppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string appdataFolder = Path.Combine(specialAppFolder, "ArakCoin");
+
+        try
+        {
+            File.Delete(Path.Combine(appdataFolder, filename));
+        }
+        catch
+        {
+            return false;
+        }
+
+        return true;
     }
 }

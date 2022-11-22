@@ -1,4 +1,4 @@
-﻿ArakCoin is intended to be a Peer-To-Peer distributed UTXO 
+﻿ArakCoin is intended to be a Proof of WOrk Peer-To-Peer distributed UTXO 
 based blockchain written from scratch in C#. 
 
 This is a solo project to serve as an educational tool for

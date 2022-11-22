@@ -15,7 +15,7 @@ public static class HostsManager
     static HostsManager()
     {
         //attempt to load nodes from the hostsfile on disk at program start. This will additionally ensure that the
-        //starting nodes in the Settings.startingNodes field exist in the hosts file. Also, if this host is a
+        //starting nodes in the Settings.startingNodes field exist in the hosts file. Also, if this host is  =
         //node, it will include itself as well in the hosts file. Note that if no nodes are successfully
         //loaded, the nodes list will be empty at program start. Will also remove any blacklisted nodes
         

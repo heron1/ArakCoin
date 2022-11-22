@@ -2,66 +2,126 @@
 
 namespace ArakCoin;
 
-public static class Settings
+/**
+ * The default user settings values which will be overriden on program startup from the settings.json file in the
+ * application folder. Note if a settings.json file doesn't exist, it will be automatically generated within the
+ * associated application folder for the OS this program is installed on (see README.md), with the default values
+ * listed here. Once the settings file has been generated, it can be edited (don't edit the settings from this class,
+ * edit them from the generated settings.json file as that is where the runtime settings values are read from).
+ *
+ * The default values here are examples only - end users are encouraged to change them to their liking within the
+ * generated settings.json file (not here), particularly the public and private keys, and ensure there is at least one
+ * valid startingNode that is online. If the user wishes to be a node, then the nodeIp must be set to the user's
+ * publicly accessible IP address, along with the nodePort, for TCP sockets connections.
+ *
+ * == IMPORTANT INFORMATION FOLLOWS REGARDING PUBLIC/PRIVATE KEYPAIRS ===
+ * Whilst the program will attempt to backup an old settings file if a new version exists, the user is
+ * heavily encouraged to store a copy of their private key elsewhere in case the settings file is lost. The user
+ * is encouraged to generate a public/private keypair that adheres to the Ed25519 standard themselves via a trusted
+ * third party method that introduces entropy. Example keys can be generated via the TestGenerateKeyPair() function
+ * in the TestSuite project (eg via running: dotnet test --filter "TestGenerateKeyPair"), however this method may not
+ * meet recommended external entropy requirements for the creation of keypairs, and its use is only recommended for
+ * testing purposes.
+ *
+ * Note: A higher level UI may automatically generate and populate the settings file from input user values, thus not
+ * requiring editing of the settings.json file directly - however this is a higher level detail that we're not
+ * concerned with here.
+ */
+public class Settings
 {
-	#region Blockchain Protocol
+	public static string jsonFilename = "settings.json";
+	
 	/**
-	 * These settings are to be fixed. Changing them will invalidate the current protocol, thus creating a new
-	 * blockchain protocol.
+	 * This is a static constructor as this class only contains static members. We do not mark the class type as
+	 * static in order to allow serialization of the class
 	 */
-	
-	// desired seconds between each block mine
-	public static int BLOCK_INTERVAL_SECONDS = 10;
-	
-	// actual blocks to wait before next difficulty adjustment check takes place
-	public static int DIFFICULTY_INTERVAL_BLOCKS = 20;
-	
-	// how large the variance in actual difficulty can be before a difficulty adjustment is required
-	public static int DIFFICULTY_ADJUSTMENT_MULTIPLICATIVE_ALLOWANCE = 2;
-	
-	// how large the variance in UTC timestamps between different nodes can be (in seconds)
-	public static int DIFFERING_TIME_ALLOWANCE = 120;
-	
-	// Estimate the value of work required for one higher difficulty as this number being raised to one higher power
-	public static int DIFFICULTY_BASE = 10;
+	static Settings()
+	{
+		loadSettingsFileAtRuntime();
+	}
 
-	// starting difficulty of the blockchain
-	public static int INITIALIZED_DIFFICULTY = 1;
-	
-	// block reward for the coinbase transaction/mining a new block TODO Advanced: Change this to scale to limit supply
-	public static int BLOCK_REWARD = 15;
+	public static void loadSettingsFileAtRuntime()
+	{
+		//attempt to load settings file from the application folder and populate the settings values here at runtime
+		
+		var jsonSettings = Storage.readJsonFromDisk(jsonFilename); //read the serialized settings file from disk
+		if (jsonSettings is null)
+		{
+			//file doesn't exist, create it and populate it with default values within this class.
+			//Exception thrown if this fails
+			generateNewSettingsFileOnDisk();
+			
+			return;
+		}
 
-	// the protocol public fee address where coins sent to are considered destroyed, but are permitted as miner reward
-	public static string FEE_ADDRESS = "0";
-	
-	// max transactions per block will limit the block size
-	public static int MAX_TRANSACTIONS_PER_BLOCK = 10;
-
-	#endregion
-
-	
-	#region Regular Settings
-
-	/**
-	 * These settings need not be fixed and may be adjustable without affecting the blockchain protocol
-	 * todo: Autogenerate these values from a settings file at runtime, then the values here won't be used.
-	 */
+		bool success = Serialize.deserializeJsonToSettings(jsonSettings); //deserialize it and put values in memory
+		if (!success)
+		{
+			//file format is invalid, back it up and replace with a new settings file that is valid with default values
+			Storage.writeJsonToDisk(jsonSettings, $"invalid_{jsonFilename}");
+			generateNewSettingsFileOnDisk(); //throws exception if generating new settings file fails
+			
+			return;
+		}
+		
+		//if none of the above conditionals were triggered, we should have successfully loaded the user settings here
+		Utilities.log($"Successfully loaded settings file {jsonFilename} from disk..");
+	}
 
 	/**
-	 * The current version of the settings file. If the fields here change then the version will increase and any
-	 * old settings files will become invalid and be replaced with a new default one. The program should however store
-	 * a copy of the old settings file before replacing it, so that the old settings values aren't lost.
+	 * Attempt to save the settings in memory to settings file on disk. Returns whether this succeeded or not
 	 */
-	public static int settingsVersion = 1;
+	public static bool saveRuntimeSettingsToSettingsFile()
+	{
+		var serializedSettings = Serialize.serializeSettingsToJson();
+		if (serializedSettings is null)
+			return false;
+
+		if (!Storage.writeJsonToDisk(serializedSettings, jsonFilename))
+			return false;
+
+		return true;
+	}
+
+	/**
+	 * Attempts to generate a new settings file on disk. If this fails an unconditional exception is thrown, regardless
+	 * of the terminateProgramOnExceptionLog value, as the program cannot operate without a user settings file.
+	 */
+	private static void generateNewSettingsFileOnDisk()
+	{
+		
+		var serializedSettings = Serialize.serializeSettingsToJson();
+		if (serializedSettings is null)
+		{
+			string errorMsg = "Could not serialize Settings.cs file, program cannot operate, exiting..";
+			Utilities.exceptionLog(errorMsg);
+			
+			throw new Exception(errorMsg); 
+		}
+
+		if (!Storage.writeJsonToDisk(serializedSettings, jsonFilename))
+		{
+			string errorMsg = $"Could not write {jsonFilename} to disk, program cannot operate, exiting..";
+			Utilities.exceptionLog(errorMsg);
+			
+			throw new Exception(errorMsg); 
+		}
+		
+		Utilities.log($"Successfully generated new settings file {jsonFilename}..");
+	}
+	
+	//todo this
 	
 	/**
 	 * Decide whether to throw an exception to terminate the program after Utilities.exceptionLog has been called
 	 */
+	[JsonProperty]
 	public static bool terminateProgramOnExceptionLog = false;
 
 	/**
 	 * Decide whether standard log (but not ExceptionLog) messages are displayed or not
 	 */
+	[JsonProperty]
 	public static bool displayLogMessages = true;
 
 	/**
@@ -73,37 +133,44 @@ public static class Settings
 	 * network among nodes. Other nodes may also choose to give this host lower priority in the event it does
 	 * mine a block, but it isn't a recognized node.
 	 */
+	[JsonProperty]
 	public static bool isNode = true;
 	
 	/**
 	 * The ipv4 address of this host for network communication.
 	 * Set this manually if the incorrect IP is being inferred from the Utilities.getLocalIpAddress() function
 	 */
+	[JsonProperty]
 	public static string nodeIp = "192.168.1.19";
 
 	/**
 	 * The default port to use for network communication as a node
 	 */
+	[JsonProperty]
 	public static int nodePort = 8000;
 
 	/**
 	 * The public key to receive coins if this host mines a block
 	 */
+	[JsonProperty]
 	public static string nodePublicKey = "1f62745d8f64ac7c9e28a17ad113cb2e4d1bd85e6eb6896f58de3bf3cabcd1b9";
 
 	/**
 	 * The private key to sign transactions this host creates
 	 */
+	[JsonProperty]
 	public static string nodePrivateKey = "125ddf4ff1dca068ff72ab0a9dafe54170c3b3315326a0f8945a33db77eefd6b";
 
 	/**
 	 * Reject mempool transactions without a threshold miner fee. Only useful for miners
 	 */
+	[JsonProperty]
 	public static int minMinerFee = 0;
 
 	/**
 	 * Time out a network communication action after waiting this number of milliseconds
 	 */
+	[JsonProperty]
 	public static int networkCommunicationTimeoutMs = 2000;
 
 	/**
@@ -112,12 +179,14 @@ public static class Settings
 	 * register itself with them every this number of seconds. Setting this value too low may be considered spam
 	 * and result in the node's IP being blacklisted by some nodes
 	 */
+	[JsonProperty]
 	public static int nodeDiscoveryDelaySeconds = 10;
 
 	/**
 	 * The number of characters this node will allow for a valid ECHO request/response. It's recommended to leave this
 	 * at the default value
 	 */
+	[JsonProperty]
 	public static int echoCharLimit = 1000;
 
 	/**
@@ -134,6 +203,7 @@ public static class Settings
 	 * Note that whilst the hosts file will dynamically change as nodes enter and leave the network, the list of
 	 * starting nodes entered here will always exist as part of the hosts file.
 	 */
+	[JsonProperty]
 	public static List<Host> startingNodes = new List<Host>()
 	{
 		new Host("192.168.1.19", 8000),
@@ -147,13 +217,11 @@ public static class Settings
 	 * Nevertheless, if some nodes should always be manually blacklisted without calling that method,
 	 * they can be entered here
 	 */
+	[JsonProperty]
 	public static List<Host> manuallyBlacklistedNodes = new List<Host>()
 	{
 		//these nodes are used in networking integration tests, so we blacklist them for the live chain
 		new Host("1.1.1.1", 9000),
 		new Host("2.2.2.2", 9000)
 	};
-
-	#endregion
-
 }

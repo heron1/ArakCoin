@@ -7,7 +7,7 @@ public static class TransactionFactory
     //add an additional txOut to a txOut array for a miner fee. Not signed
     public static TxOut[] addMinerFeeToTxOutArray(TxOut[] txOuts, long minerFee)
     {
-        TxOut feeTx = new TxOut(Settings.FEE_ADDRESS, minerFee);
+        TxOut feeTx = new TxOut(Protocol.FEE_ADDRESS, minerFee);
         return new TxOut[] { feeTx }.Concat(txOuts).ToArray();
     }
     
@@ -157,7 +157,7 @@ public static class TransactionFactory
     public static Transaction? createCoinbaseTransaction(string rewardPublicKey, int blockId, Transaction[]? transactions)
     {
         //the total reward begins with the coinbase miner reward as per the protocol
-        long totalReward = Settings.BLOCK_REWARD;
+        long totalReward = Protocol.BLOCK_REWARD;
 
         if (transactions is not null)
         {

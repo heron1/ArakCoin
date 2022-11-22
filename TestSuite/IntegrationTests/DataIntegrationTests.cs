@@ -12,9 +12,6 @@ public class DataIntegrationTests
     {
         Settings.nodePublicKey = testPublicKey;
     }
-
-    //todo - these unit tests should test for data corruption (particularly in the serialized form)
-    //note that the Serialize class should test against this
     
     [Test]
     public void TestBlockSerialization()
@@ -178,12 +175,53 @@ public class DataIntegrationTests
         Assert.IsTrue(deserializedBlockchain == bchain);
         Assert.IsTrue(deserializedBlockchain.isBlockchainValid());
     }
+
+    [Test]
+    public void TestSettingsFile()
+    {
+        //set the settings filename to a test setting name, which won't interfere with any real settings file
+        Settings.jsonFilename = "test_settings.json";
+        
+        //delete test files if they exist
+        Storage.deleteFile(Settings.jsonFilename);
+        Storage.deleteFile($"invalid_{Settings.jsonFilename}");
+        
+        //create the settings file as the test version
+        Settings.loadSettingsFileAtRuntime();
+        
+        //keep track of the original port
+        int originalPort = Settings.nodePort;
+        
+        //change the settings port number to a different value, save test settings file to disk
+        int testPort = originalPort + 1;
+        Settings.nodePort = testPort;
+        Settings.saveRuntimeSettingsToSettingsFile();
+        
+        //change the port number again, reload the test settings file from disk, assert old value is loaded
+        Settings.nodePort = testPort + 2;
+        Assert.IsTrue(Settings.nodePort != testPort);
+        Settings.loadSettingsFileAtRuntime();
+        Assert.IsTrue(Settings.nodePort == testPort);
+        
+        //attempt to deserialize a junk settings file, assert at least the port isn't corrupted
+        Storage.writeJsonToDisk("some bad data", Settings.jsonFilename);
+        Settings.loadSettingsFileAtRuntime();
+        Assert.IsTrue(Settings.nodePort == testPort);
+        //in addition, a backup of the junk settings file should have been saved correctly
+        string? junkData = Storage.readJsonFromDisk($"invalid_{Settings.jsonFilename}");
+        Assert.IsNotNull(junkData);
+        Assert.IsTrue(junkData == "some bad data");
+
+
+
+    }
     
     [Test]
     public void Temp()
     {
-        
-        
-        
+        // var set = Serialize.serializeSettingsToJson();
+        int b = 3;
+
+
     }
 }

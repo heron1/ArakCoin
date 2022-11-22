@@ -26,7 +26,7 @@ public class BlockchainFunctionalTests
 		LogTestMsg("Testing TestDifficultyScaling..");
 	
 		// pick a number of blocks to add that will test 2 difficulty intervals, along with some extra blocks
-		int blocksToAdd = Settings.DIFFICULTY_INTERVAL_BLOCKS * 2 + Settings.DIFFICULTY_INTERVAL_BLOCKS / 2;
+		int blocksToAdd = Protocol.DIFFICULTY_INTERVAL_BLOCKS * 2 + Protocol.DIFFICULTY_INTERVAL_BLOCKS / 2;
 		for (int i = 0; i < blocksToAdd; i++)
 		{
 			bchain.addValidBlock(BlockFactory.createAndMineNewBlock(bchain));
@@ -77,7 +77,7 @@ public class BlockchainFunctionalTests
 			{
 				//we now change protocol settings, and mine a fourth chain with greater length & hashpower
 				//than prior 3
-				Settings.DIFFICULTY_INTERVAL_BLOCKS--;
+				Protocol.DIFFICULTY_INTERVAL_BLOCKS--;
 			}
 			Blockchain newChain = new Blockchain();
 			bchains.Add(newChain);
@@ -159,7 +159,7 @@ public class BlockchainFunctionalTests
 			}
 		}
 		
-		Settings.DIFFICULTY_INTERVAL_BLOCKS++; //set protocol back to the original one
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS++; //set protocol back to the original one
 		Assert.IsTrue(actualWinner.isBlockchainValid());
 		Assert.IsFalse(bchains.Last().isBlockchainValid());
 
