@@ -1,4 +1,6 @@
-﻿namespace ArakCoin.Networking;
+﻿using System.Collections.Concurrent;
+
+namespace ArakCoin.Networking;
 
 public static class NetworkingManager
 {
@@ -83,47 +85,48 @@ public static class NetworkingManager
     }
 
     /**
-     * Synchronously communicate with every node in the local hosts file and request their hosts file.
-     * Update this nodes hosts file with nodes from all the received hosts files
+     * Synchronously communicate with every node in the local hosts file as separate Tasks in parallel, and request
+     * their hosts file. Update this nodes hosts file with nodes from all the received hosts files
      */
     public static void updateHostsFileFromKnownNodes()
     {
-        //todo - async version? necessary for large amount of hosts -> difficult with lock but do it
-        //(ensure tests are written first)
-        lock (HostsManager.hostsLock) //but is a lock necessary now that getNodes returns a copy only?
+        var newNodes = new ConcurrentBag<Host>(); //thread safe container for adding new nodes in parallel
+        var nodes = HostsManager.getNodes(); //non-mutating nodes copy
+        var tasks = new Task[nodes.Count]; //parallel tasks array
+        for (var i = 0; i < nodes.Count; i++)
         {
-            var newNodes = new List<Host>();
-            foreach (var node in HostsManager.getNodes())
+            var node = nodes[i];
+            tasks[i] = Task.Run(() =>
             {
                 var nodeListRequestMsg = new NetworkMessage(MessageTypeEnum.GETNODES, "");
                 var serializedNetworkMsg = Serialize.serializeNetworkMessageToJson(nodeListRequestMsg);
                 string? resp = Communication.communicateWithNode(serializedNetworkMsg, node).Result;
                 if (resp is null)
-                    continue;
+                    return;
 
                 var receivedNetworkMsg = Serialize.deserializeJsonToNetworkMessage(resp);
                 if (receivedNetworkMsg is null)
-                    continue;
-                
+                    return;
+
                 if (receivedNetworkMsg.messageTypeEnum != MessageTypeEnum.GETNODES)
-                    continue;
+                    return;
 
                 var receivedHostsFile = Serialize.deserializeJsonToHosts(receivedNetworkMsg.rawMessage);
                 if (receivedHostsFile is null)
-                    continue;
+                    return;
 
                 foreach (var receivedNode in receivedHostsFile)
                 {
-                    if (!HostsManager.getNodes().Contains(receivedNode))
+                    if (!nodes.Contains(receivedNode))
                         newNodes.Add(receivedNode);
                 }
-            }
-            foreach (var node in newNodes)
-            {
-                HostsManager.addNode(node);
-            }
+            });
+        }
+
+        Task.WaitAll(tasks);
+        foreach (var node in newNodes)
+        {
+            HostsManager.addNode(node);
         }
     }
-
-    
 }

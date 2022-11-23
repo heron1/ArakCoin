@@ -76,7 +76,6 @@ public class Settings
 	 */
 	private static void generateNewSettingsFileOnDisk()
 	{
-		
 		var serializedSettings = Serialize.serializeSettingsToJson();
 		if (serializedSettings is null)
 		{

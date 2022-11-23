@@ -121,7 +121,8 @@ public class Block
 		if (startingHash is null)
 			return false;
 
-		Utilities.log($"Mining block #{index} with starting hash {startingHash.Substring(0, 4)}...");
+		Utilities.log($"Mining block #{index} with difficulty {difficulty} and " +
+		              $"starting hash {startingHash.Substring(0, 4)}...");
 
 		//now we begin the mining process
 		while (!hashDifficultyMatch())
