@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using ArakCoin.Transactions;
 
 namespace ArakCoin.Networking;
 
@@ -7,7 +8,7 @@ public static class NetworkingManager
     /**
      * Asynchronously register this node with another node
      */
-    public static async Task<Task<string?>> registerThisNodeWithAnotherNode(Host otherNode)
+    public static Task<string?> registerThisNodeWithAnotherNode(Host otherNode)
     {
         var sendMsg = new NetworkMessage(MessageTypeEnum.REGISTERNODE, "",
             new Host(Settings.nodeIp, Settings.nodePort));
@@ -79,6 +80,22 @@ public static class NetworkingManager
         
         var sendMsg = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedBlock, 
             Settings.isNode ? new Host(Settings.nodeIp, Settings.nodePort) : null);
+        Communication.broadcastNetworkMessage(sendMsg);
+
+        return true;
+    }
+
+    /**
+     * Broadcasts the given mempool to the P2P network. Returns false if the local serialization of the mempool fails,
+     * otherwise true. Does not check node responses.
+     */
+    public static bool broadcastMempool(List<Transaction> mempool)
+    {
+        var serializedMempool = Serialize.serializeMempoolToJson(mempool);
+        if (serializedMempool is null)
+            return false;
+
+        var sendMsg = new NetworkMessage(MessageTypeEnum.SENDMEMPOOL, serializedMempool);
         Communication.broadcastNetworkMessage(sendMsg);
 
         return true;

@@ -199,19 +199,19 @@ public class Transaction
 
     /**
      * Returns whether the transaction meets requirements to be added to the mempool for this node. Note that
-     * unlike the method *isValidTransactionWithinPool*, this method additionally asserts that both local settings
-     * (such as minimum miner fee) and protocol settings (such as max pool size) are satisfied
+     * unlike the method *isValidTransactionWithinPool*, this method additionally asserts that local settings
+     * (such as minimum miner fee) are satisfied
      */
     public static bool doesTransactionMeetMemPoolAddRequirements(Transaction tx, 
 	    List<Transaction> txPool, UTxOut[] uTxOuts)
     {
-	    //first assert tx is valid within the context of the pool
+	    //first make sure the mempool isn't full as specified in the node's settings
+	    if (txPool.Count >= Settings.maxMempoolSize)
+		    return false;
+	    
+	    //next assert tx is valid within the context of the pool
 	    if (!isValidTransactionWithinPool(tx, txPool, uTxOuts))
 			return false;
-	    
-	    //assert mempool max tx count isn't breached (keep 1 lower to allow coinbase tx to also be included)
-	    if (!(txPool.Count < Protocol.MAX_TRANSACTIONS_PER_BLOCK - 1))
-		    return false;
 
 	    //lastly assert the miner fee meets threshold requirements for this node
 	    long minerFee = 0;

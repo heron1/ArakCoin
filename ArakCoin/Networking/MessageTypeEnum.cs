@@ -16,6 +16,8 @@ public enum MessageTypeEnum
                //be appended by the node, as it may need to request the full chain separately to see if the block is
                //ahead or not on another valid chain. This will be indicated in an INFO message instead
     GETMEMPOOL, //client request to retrieve this node's mempool. Client message content is ignored
+    SENDMEMPOOL, //client sends a mempool to this node. This node may update its own mempool based upon
+                 //new valid transactions in the received mempool
     GETNODES, //client request to retrieve this node's hostsfile (list of P2P nodes). Client message content is ignored
     REGISTERNODE, //client request for the receiver to add the included sendingNode in the sent NetworkMessage to the
                   //receivers hosts file. Client message content is ignored

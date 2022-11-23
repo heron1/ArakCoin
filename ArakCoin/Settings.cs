@@ -152,6 +152,11 @@ public class Settings
 	public static int minMinerFee = 0;
 
 	/**
+	 * Limits the size of the mempool. Received transactions will be rejected if the mempool is full
+	 */
+	[JsonProperty] public static int maxMempoolSize = 25;
+
+	/**
 	 * Time out a network communication action after waiting this number of milliseconds
 	 */
 	[JsonProperty]

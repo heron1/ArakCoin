@@ -17,11 +17,12 @@ public class BlockchainIntegration
 	public void Setup()
 	{
 		// put blockchain protocol settings to low values integration tests so they don't take too long
-		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Protocol.BLOCK_INTERVAL_SECONDS = 2;
-		Protocol.INITIALIZED_DIFFICULTY = 2;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 50;
+		Protocol.BLOCK_INTERVAL_SECONDS = 1;
+		Protocol.INITIALIZED_DIFFICULTY = 1;
 		
 		Protocol.BLOCK_REWARD = 20;
+		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
 		Settings.nodePublicKey = testPublicKey;
 		Settings.nodePrivateKey = testPrivateKey;
 		
@@ -313,13 +314,72 @@ public class BlockchainIntegration
 		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
-		
+
 		// test all invalid blocks were successfully rejected
 		Assert.IsTrue(bchain.isBlockchainValid());
 		
 		// force add an invalid block (wrong hash), verify chain is now invalid
 		bchain.forceAddBlock(nextBlock);
 		Assert.IsFalse(bchain.isBlockchainValid());
+	}
+
+	[Test]
+	public void TestInvalidBlockMineRejected()
+	{
+		LogTestMsg("Testing TestInvalidBlocksRejected..");
+		
+		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.MAX_TRANSACTIONS_PER_BLOCK == 10);
+		
+		//create chain, mine some blocks, get some coins to use in our tests
+		Blockchain bchain = new Blockchain();
+		for (int i = 0; i < Protocol.MAX_TRANSACTIONS_PER_BLOCK + 3; i++)
+		{
+			BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		}
+
+		Assert.IsTrue(bchain.mempool.Count == 0);
+		//create 1 more tx than the protocol allows per block and add it to the mempool
+		for (int i = 0; i < Protocol.MAX_TRANSACTIONS_PER_BLOCK + 1; i++)
+		{
+			Transaction? validTx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
+			{
+				new TxOut(
+					testPublicKey2, 10)
+			}, testPrivateKey, bchain, 0, true);
+			Assert.IsNotNull(validTx);
+			bchain.addTransactionToMempoolGivenNodeRequirements(validTx);
+		}
+		Assert.IsTrue(bchain.mempool.Count > Protocol.MAX_TRANSACTIONS_PER_BLOCK);
+
+		//create a block with more transactions than allowed, and attempt to mine it.
+		//Mining itself should immediately fail
+		Block invalidBlock = BlockFactory.createNewBlock(bchain, bchain.mempool.ToArray());
+		Assert.IsFalse(invalidBlock.mineBlock());
+		
+		//nevertheless, we will manually mine it here (bypassing the checks in the mineBlock method)
+		while (!invalidBlock.hashDifficultyMatch())
+			invalidBlock.nonce++;
+		Assert.IsTrue(invalidBlock.hashDifficultyMatch()); //block should have a hash matching blockchain difficulty
+		//should also contain a valid coinbase transaction
+		Assert.IsTrue(Transaction.isValidCoinbaseTransaction(invalidBlock.transactions[0], invalidBlock));
+		//however the block is not valid - it contains more txes than allowed per protocol settings
+		Assert.IsFalse(bchain.isNewBlockValid(invalidBlock));
+		Block lastBlock = bchain.getLastBlock();
+		//also attempt to add it, verify this failed
+		bchain.addValidBlock(invalidBlock);
+		Assert.IsTrue(bchain.getLastBlock() == lastBlock);
+		
+		//lets now adjust protocol settings so that the tx limit isn't breached. Block should now be valid
+		Protocol.MAX_TRANSACTIONS_PER_BLOCK *= 2;
+		Assert.IsTrue(bchain.isNewBlockValid(invalidBlock));
+		bchain.addValidBlock(invalidBlock);
+		Assert.False(bchain.getLastBlock() == lastBlock);
+		
+		//For our last test, we will set transactions for a block to "null" and assert this isn't a valid block
+		Block invalidBlock2 = BlockFactory.createNewBlock(bchain);
+		invalidBlock2.transactions = null;
+		Assert.IsFalse(bchain.isNewBlockValid(invalidBlock2));
 	}
 	
 	[Test]
@@ -632,6 +692,101 @@ public class BlockchainIntegration
 		
 		//Our main test assertion follows - We can successfully interrupt block mining before it's complete:
 		Assert.IsFalse(veryDifficultBlock.hashDifficultyMatch());
+	}
+
+	[Test]
+	public void TestGetTxesFromMempoolForBlockMine()
+	{
+		//This test should test the correct retrieval of txes from the mempool for a block mine based upon protocol
+		//settings, and that the underlying mempool isn't mutated unless it's delibaretely updated
+		
+		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 5; //set protocol to low tx limit for testing
+		Settings.maxMempoolSize = 20; //ensure mempool can hold our txes
+		
+		//first create a blockchain and mine some coins
+		Blockchain bchain = new Blockchain();
+		for (int i = 0; i < 16; i++)
+		{
+			BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		}
+		//add 15 valid txes to the mempool
+		Transaction txValid;
+		for (int i = 0; i < 15; i++)
+		{
+			txValid = TransactionFactory.createNewTransactionForBlockchain(
+				new TxOut[] { new TxOut(testPublicKey2, 1)},
+				testPrivateKey, bchain, 2, false);
+			Assert.IsTrue(bchain.addTransactionToMempoolGivenNodeRequirements(txValid));
+		}
+		Assert.IsTrue(bchain.mempool.Count == 15);
+		var originalPool = bchain.mempool.ToList(); //make a value copy of the mempool
+		
+		//now retrieve a chunk of txes from the mempool for the block mine
+		var txArrayForBlockMine = bchain.getTxesFromMempoolForBlockMine();
+		//the array should have 4 members - 1 less to allow for the coinbase tx (remember max tx per block is 5 here)
+		Assert.IsTrue(txArrayForBlockMine.Length == 4);
+		Block nextBlock = BlockFactory.createAndMineNewBlock(bchain, txArrayForBlockMine);
+		nextBlock.mineBlock(); //mine the chunk of txes retrieved from the mempool
+		Assert.IsTrue(nextBlock.transactions.Length == 5); //block should have 5 txes, which includes the coinbase tx
+		//the original mempool should not have been mutated, test for this:
+		Assert.IsTrue(bchain.mempool.Count == 15);
+		for (int i = 0; i < 15; i++)
+			Assert.IsTrue(originalPool[i] == bchain.mempool[i]);
+		//do the block mine, mempool should undergo automatic sanitization to remove the mined txes
+		Assert.IsTrue(bchain.addValidBlock(nextBlock));
+		Assert.IsTrue(bchain.mempool.Count == 11); //we should have 11 txes left in the mempool
+		Assert.IsTrue(bchain.validateMemPool()); //the mempool should also be valid
+		
+		//do the same thing with the next block, but we'll test the higher level mineNextBlockAndAddToBlockchain
+		//function which should do all this automatically for us
+		bool success = BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		Assert.IsTrue(success);
+		Assert.IsTrue(bchain.mempool.Count == 7);
+		Assert.IsTrue(bchain.validateMemPool());
+		
+		//and the next block
+		success = BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		Assert.IsTrue(success);
+		Assert.IsTrue(bchain.mempool.Count == 3);
+		Assert.IsTrue(bchain.validateMemPool());
+		
+		//assert the getTxesFromMempoolForBlockMine will retrieve the 3 remaining txes (less than default max):
+		txArrayForBlockMine = bchain.getTxesFromMempoolForBlockMine();
+		Assert.IsTrue(txArrayForBlockMine.Length == 3);
+		//but we'll use the mineNextBlockAndAddToBlockchain instead for the next block mine:
+		success = BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		Assert.IsTrue(success);
+		Assert.IsTrue(bchain.mempool.Count == 0);
+		Assert.IsTrue(bchain.validateMemPool());
+		Assert.IsTrue(bchain.getLastBlock().transactions.Length == 4); //3 normal txes from mempool, 1 coinbase tx
+		
+		//what if the mempool is empty? everything should still work
+		txArrayForBlockMine = bchain.getTxesFromMempoolForBlockMine();
+		Assert.IsTrue(txArrayForBlockMine.Length == 0);
+		success = BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		Assert.IsTrue(success);
+		Assert.IsTrue(bchain.mempool.Count == 0);
+		Assert.IsTrue(bchain.validateMemPool());
+		Assert.IsTrue(bchain.isBlockchainValid());
+		//the last block should only have the coinbase tx
+		Assert.IsTrue(bchain.getLastBlock().transactions.Length == 1);
+		int bchainLength = bchain.getLength(); //get the bchain length for the next test
+		
+		//everything is fine until now. Let's set the mempool back to the original mempool. These txes should now
+		//be spent and the block mine should fail. Assert this:
+		bchain.mempool = originalPool;
+		Assert.IsFalse(bchain.validateMemPool());
+		success = BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		Assert.IsFalse(success);
+		//although the blockchain shouldn't have been mutated from the above failed test:
+		Assert.IsTrue(bchain.getLength() == bchainLength);
+		Assert.IsTrue(bchain.isBlockchainValid());
+		
+		//but let's manually create a block with some of the already spent txes:
+		Block invalidBlock = BlockFactory.createNewBlock(bchain, originalPool.ToArray()[..2]);
+		//block should be invalid, and adding it should fail:
+		Assert.IsFalse(bchain.isNewBlockValid(invalidBlock));
+		Assert.IsFalse(bchain.addValidBlock(invalidBlock));
 	}
 
 	/**

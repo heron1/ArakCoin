@@ -8,7 +8,6 @@ namespace ArakCoin
 		static void Main(string[] args)
 		{
 			
-
 		}
 
 		

@@ -14,13 +14,14 @@ public class TransactionIntegration
 	{
 		// put blockchain protocol settings to low values integration tests so they don't take too long
 		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 5;
-		Protocol.BLOCK_INTERVAL_SECONDS = 2;
+		Protocol.BLOCK_INTERVAL_SECONDS = 1;
 		Protocol.INITIALIZED_DIFFICULTY = 1;
 		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
 		
 		//keep these protocol test parameters the same even if real protocol values change
 		Protocol.BLOCK_REWARD = 20;
 		Settings.minMinerFee  = 0;
+		Settings.maxMempoolSize = Protocol.MAX_TRANSACTIONS_PER_BLOCK * 2;
 		Settings.nodePublicKey  = testPublicKey;
 		Settings.nodePrivateKey  = testPrivateKey;
 	}
@@ -534,6 +535,41 @@ public class TransactionIntegration
 	}
 
 	[Test]
+	public void TestAddOverMempoolFails()
+	{
+		//for this test we set the node's max mempool size to 5, and assert that the 6th added transaction isn't added
+		Settings.maxMempoolSize = 5;
+		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Blockchain bchain = new Blockchain();
+		//mine some blocks so we can create valid transactions from the rewards
+		for (int i = 0; i < 10; i++)
+		{
+			BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		}
+
+		//now add 5 txes to the mempool, which should all succeed
+		Transaction txValid;
+		for (int i = 0; i < 5; i++)
+		{
+			txValid = TransactionFactory.createNewTransactionForBlockchain(
+				new TxOut[] { new TxOut(testPublicKey2, 1)},
+				testPrivateKey, bchain, 2, false);
+			Assert.IsTrue(bchain.addTransactionToMempoolGivenNodeRequirements(txValid));
+		}
+		//the 6th one is higher than our mempool add requirements, so should fail
+		txValid = TransactionFactory.createNewTransactionForBlockchain(
+			new TxOut[] { new TxOut(testPublicKey2, 1)},
+			testPrivateKey, bchain, 2, false);
+		Assert.False(bchain.addTransactionToMempoolGivenNodeRequirements(txValid));
+		Assert.IsTrue(bchain.mempool.Count == 5);
+		
+		//change our settings to now allow 6 txes. The add should now work
+		Settings.maxMempoolSize = 6;
+		Assert.True(bchain.addTransactionToMempoolGivenNodeRequirements(txValid));
+		Assert.IsTrue(bchain.mempool.Count == 6);
+	}
+
+	[Test]
 	public void TestValidateMempool()
 	{
 		//we will create an invalid mempool in different ways, which should fail validation
@@ -587,40 +623,7 @@ public class TransactionIntegration
 		bchain.mempool = nextValidBlock.transactions.ToList(); //however we add its coinbase tx to the mempool
 		Assert.IsFalse(bchain.validateMemPool());
 
-		//Test 3 - Mempool which is over the protocol max transaction size per block - Should fail
-		//For this test, we will set the protocol transaction size to 3 transactions, to minimize mining
-		bchain.clearMempool();
-		Assert.IsTrue(bchain.mempool.Count == 0);
-		Assert.IsTrue(bchain.validateMemPool());
-		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 3;
-		success = bchain.addTransactionToMempoolGivenNodeRequirements(validTx);
-		Assert.IsTrue(success);
-		validTx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
-		{
-			new TxOut(
-				testPublicKey2, 10)
-		}, testPrivateKey, bchain, 1, false); //make another valid tx
-		success = bchain.addTransactionToMempoolGivenNodeRequirements(validTx);
-		Assert.IsTrue(success);
-		Assert.IsTrue(bchain.mempool.Count == 2);
-		validTx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
-		{
-			new TxOut(
-				testPublicKey2, 10)
-		}, testPrivateKey, bchain, 1, false); //make another valid tx
-		success = bchain.addTransactionToMempoolGivenNodeRequirements(validTx);
-		//assert the above operation fails - with a 3 limit tx size per block, mempool should be limited to 2 so that
-		//the coinbase transaction can fit
-		Assert.IsFalse(success); 
-		Assert.IsTrue(bchain.mempool.Count == 2);
-		//now change our protocol back to original test value
-		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
-		//now the previous operation should pass, as it can fit within the block size (and the tx was always valid)
-		success = bchain.addTransactionToMempoolGivenNodeRequirements(validTx);
-		Assert.IsTrue(success);
-		Assert.IsTrue(bchain.mempool.Count == 3);
-
-		//Test 4 - Mempool containing a tx which is below our required miner fee. Should fail
+		//Test 3 - Mempool containing a tx which is below our required miner fee. Should fail
 		bchain.clearMempool();
 		Assert.IsTrue(bchain.mempool.Count == 0);
 		Assert.IsTrue(bchain.validateMemPool());
@@ -632,7 +635,6 @@ public class TransactionIntegration
 		Assert.IsFalse(bchain.addTransactionToMempoolGivenNodeRequirements(lowFeeTx));
 		Assert.IsTrue(bchain.mempool.Count == 0);
 		Assert.IsTrue(bchain.validateMemPool());
-
 	}
 	
 	[Test]

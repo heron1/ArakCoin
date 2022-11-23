@@ -261,7 +261,7 @@ public class NetworkingIntegrationTests
         
         //NEXTBLOCK test - ahead by 2, but no node sent in the message. So this node cannot do anything to verify
         //                  whether that block is valid or not
-        //receivedChain is a copy of the node's blockchain, but not a reference to it. We will mine it to get ahead
+        //receivedChain is a value copy of the node's blockchain. We will mine it to get ahead
         BlockFactory.mineNextBlockAndAddToBlockchain(receivedChain);
         BlockFactory.mineNextBlockAndAddToBlockchain(receivedChain); //now 2 blocks ahead
         Block skippedBlock = receivedChain.getLastBlock();

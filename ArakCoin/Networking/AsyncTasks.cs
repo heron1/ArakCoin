@@ -23,11 +23,10 @@ public static class AsyncTasks
                     if (!cancelToken.IsCancellationRequested)
                     {
                         //create and begin mining the next block on this node's own local master chain
-                        Global.nextBlock = BlockFactory.createNewBlock(
-                            Global.masterChain, Global.masterChain.mempool.ToArray());
+                        Global.nextBlock = BlockFactory.createNewBlock(Global.masterChain);
                         if (!Blockchain.isGenesisBlock(Global.nextBlock))
                             Global.nextBlock.mineBlock();
-                        
+
                         //if the block was successfully mined and added to the local chain, broadcast it
                         if (Global.masterChain.addValidBlock(Global.nextBlock))
                         {
@@ -72,7 +71,7 @@ public static class AsyncTasks
     public static CancellationTokenSource nodeDiscoveryAsync(int secondsDelay)
     {
         secondsDelay *= 1000; //convert input seconds into milliseconds
-        
+
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
 
@@ -88,6 +87,7 @@ public static class AsyncTasks
                     {
                         NetworkingManager.registerThisNodeWithAnotherNode(node);
                     }
+
                     Utilities.sleep(secondsDelay);
                 }
                 else
@@ -100,7 +100,7 @@ public static class AsyncTasks
 
         return cancellationTokenSource;
     }
-    
+
     /**
      * Cancel the P2P discovery for the async task with the associated cancellation token
      */
@@ -108,4 +108,51 @@ public static class AsyncTasks
     {
         cancelTokenSource.Cancel();
     }
+
+    /**
+     * Asynchronously broadcast this node's mempool to known nodes periodically, but only if the mempool has changed
+     * since the last broadcast. Nodes should not immediately broadcast every created transaction they receive, as
+     * this could very easily lead to spam. Instead, they should periodically broadcast their mempool.
+     */
+    //todo - mempool rework -> allow any size so long as received tx is valid. Test this still works. (write tests)
+    //todo - nodeListener to also respond to incoming mempools
+    public static CancellationTokenSource shareMempoolAsync(int secondsDelay)
+    {
+        secondsDelay *= 1000; //convert input seconds into milliseconds
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        CancellationToken cancelToken = cancellationTokenSource.Token;
+        Task.Run(() =>
+        {
+            while (true)
+            {
+                if (!cancelToken.IsCancellationRequested)
+                {
+                    Utilities.log("broadcasting updated mempool..");
+                    foreach (var node in HostsManager.getNodes())
+                    {
+                        NetworkingManager.broadcastMempool(Global.masterChain.mempool);
+                    }
+
+                    Utilities.sleep(secondsDelay);
+                }
+                else
+                {
+                    Utilities.log("mempool broadcasting stopped via token interrupt..");
+                    break;
+                }
+            }
+        }, cancelToken);
+
+        return cancellationTokenSource;
+    }
+    
+    /**
+     * Cancel the P2P mempool broadcasting for the async task with the associated cancellation token
+     */
+    public static void cancelshareMempoolAsync(CancellationTokenSource cancelTokenSource)
+    {
+        cancelTokenSource.Cancel();
+    }
+    
 }

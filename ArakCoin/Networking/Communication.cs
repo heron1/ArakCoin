@@ -122,8 +122,10 @@ public static class Communication
      * If any part of the communication fails, or the underlying base communication protocol (but not message protocol)
      * is not followed (even if the communication was successful), null is returned.
      */
-    public static async Task<string?> communicateWithNode(string message, Host node)
+    public static async Task<string?> communicateWithNode(string? message, Host node)
     {
+        if (message is null)
+            return null;
         try
         {
             IPEndPoint ipEndPoint = IPEndPoint.Parse(node.ToString());

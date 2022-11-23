@@ -16,6 +16,8 @@ public class Blockchain
 	
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
+	//todo - actually might make the mempool size dynamic however mining just takes the top max block txes - still limit it
+	//as a local user setting
 	private readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
 
 	/**
@@ -72,8 +74,11 @@ public class Blockchain
 	/**
 	 * Adds the given block to the end of the blockchain only if the operation is valid. Will return a boolean as to
 	 * whether or not this operation was successful. This is the recommended way to append new blocks
+	 *
+	 * Will also optionally update the mempool to remove any now invalid transactions due to the block add (default
+	 * value is true)
 	 */
-	public bool addValidBlock(Block block)
+	public bool addValidBlock(Block block, bool sanitizeMempoolIfBlockAdded = true)
 	{
 		lock(blockChainLock)
 		{
@@ -85,6 +90,9 @@ public class Blockchain
 
 			forceAddBlock(block);
 			updateDifficulty();
+
+			if (sanitizeMempoolIfBlockAdded)
+				sanitizeMempool();
 
 			return true;
 		}
@@ -504,6 +512,24 @@ public class Blockchain
 		this.mempool = sanitizeMempool(this.mempool, this.uTxOuts);
 	}
 
+	/**
+	 * Retrieve the top transactions from the mempool for a block mine and return them as an array. Does not mutate
+	 * the mempool
+	 */
+	public Transaction[] getTxesFromMempoolForBlockMine()
+	{
+		int endIndex;
+		if (mempool.Count < Protocol.MAX_TRANSACTIONS_PER_BLOCK)
+			endIndex = mempool.Count;
+		else
+			endIndex = Protocol.MAX_TRANSACTIONS_PER_BLOCK - 1; //leave space for 1 extra tx for the coinbase tx
+		
+		return this.mempool.ToArray()[..(endIndex)];
+	}
+
+	//TODO IMPORTANT -> the below two methods should prioritize txes with a higher fee to appear at the start of the 
+	//mempool, so that when mining begins the first txes chosen are the ones with highest fee
+	
 	//TODO - this is proposed advanced functionality. If time permits, then given a list of input mempools, retrieve the txes
 	//that fill a new mempool up to the allowed protocol size, with the maximum miner fees, whilst ensuring all
 	//transactions are valid. This would allow miners to communicate mempools with one another whilst retaining an

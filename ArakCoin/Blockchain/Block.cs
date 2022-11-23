@@ -119,7 +119,18 @@ public class Block
 		
 		//assert block has valid data, if it doesn't, return false
 		if (startingHash is null)
+		{
+			Utilities.log("Attempted to mine block with invalid hash, cancelling..");
 			return false;
+		}
+		
+		//assert the transactions in the block don't exceed protocol limit. If they do, return false
+		if (transactions.Length > Protocol.MAX_TRANSACTIONS_PER_BLOCK)
+		{
+			Utilities.log($"Attempted to mine blocks with {transactions.Length} transactions however the protocol " +
+			              $"has a limit of {Protocol.MAX_TRANSACTIONS_PER_BLOCK}, cancelling..");
+			return false;
+		}
 
 		Utilities.log($"Mining block #{index} with difficulty {difficulty} and " +
 		              $"starting hash {startingHash.Substring(0, 4)}...");
