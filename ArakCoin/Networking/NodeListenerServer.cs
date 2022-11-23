@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using ArakCoin.Transactions;
 
 namespace ArakCoin.Networking;
 
@@ -121,11 +122,13 @@ public class NodeListenerServer : IDisposable
                 if (networkMessage.rawMessage.Length > Settings.echoCharLimit)
                     return createErrorNetworkMessage($"ECHO requests must be {Settings.echoCharLimit} char =");
                 return new NetworkMessage(MessageTypeEnum.ECHO, networkMessage.rawMessage);
+            
             case MessageTypeEnum.GETCHAIN:
                 var serializedBlockchain = Serialize.serializeBlockchainToJson(Global.masterChain);
                 if (serializedBlockchain is null)
                     return createErrorNetworkMessage("Error retrieving local blockchain");
                 return new NetworkMessage(MessageTypeEnum.GETCHAIN, serializedBlockchain);
+            
             case MessageTypeEnum.GETBLOCK:
                 int blockIndex;
                 if (!Int32.TryParse(networkMessage.rawMessage, out blockIndex))
@@ -138,6 +141,7 @@ public class NodeListenerServer : IDisposable
                 if (serializedBlock is null)
                     return createErrorNetworkMessage($"Local node error serializing block occurred");
                 return new NetworkMessage(MessageTypeEnum.GETBLOCK, serializedBlock);
+            
             case MessageTypeEnum.NEXTBLOCK:
                 Block? candidateNextBlock = Serialize.deserializeJsonToBlock(networkMessage.rawMessage);
                 if (candidateNextBlock is null || candidateNextBlock.calculateBlockHash() is null)
@@ -163,16 +167,38 @@ public class NodeListenerServer : IDisposable
                         $"potential replacement chain");
                 }
                 return createErrorNetworkMessage($"Invalid next block received");
+            
             case MessageTypeEnum.GETMEMPOOL:
                 var serializedMempool = Serialize.serializeMempoolToJson(Global.masterChain.mempool);
                 if (serializedMempool is null)
                     return createErrorNetworkMessage("Error retrieving local mempool");
                 return new NetworkMessage(MessageTypeEnum.GETMEMPOOL, serializedMempool);
+            
+            case MessageTypeEnum.SENDMEMPOOL:
+                List<Transaction>? receivedMempool = Serialize.deserializeJsonToMempool(networkMessage.rawMessage);
+                if (receivedMempool is null)
+                    return createErrorNetworkMessage("Received mempool could not be deserialized");
+                
+                //shrink the received mempool to respect our Settings.maxMempoolSize if it exceeds it
+                var candidateMempool = Utilities.sliceList(receivedMempool, 0, Settings.maxMempoolSize);
+                
+                //attempt to sequentially add each transaction in the received mempool to our local mempool.
+                //This will also perform validation on every received transaction, and override local transactions that
+                //are paying a lower fee (and that are also the lowest priority) if the local mempool is full
+                foreach (var candidateTx in candidateMempool)
+                {
+                    Global.masterChain.addTransactionToMempoolGivenNodeRequirements(candidateTx);
+                }
+                
+                //regardless of the above outcome, we return a GETNODE acknowledgement enum with no message
+                return new NetworkMessage(MessageTypeEnum.GETNODES, "");
+            
             case MessageTypeEnum.GETNODES:
                 var serializedNodes = Serialize.serializeHostsToJson(HostsManager.getNodes());
                 if (serializedNodes is null)
                     return createErrorNetworkMessage("Error retrieving nodes list");
                 return new NetworkMessage(MessageTypeEnum.GETNODES, serializedNodes);
+            
             case MessageTypeEnum.REGISTERNODE:
                 if (networkMessage.sendingNode is null)
                     return createErrorNetworkMessage("No node received");
@@ -209,8 +235,6 @@ public class NodeListenerServer : IDisposable
      */
     private async Task handleAheadCandidateNextBlock(NetworkMessage networkMessage)
     {
-        //todo this - and functional testing. Attempt with another local node on a different port as well as a
-        //remote node
         if (networkMessage.sendingNode is null || !networkMessage.sendingNode.validateHostFormatting())
             return; //if the sending client didn't provide a node we can check for a replacement blockchain,
                     //then we cannot proceed any further

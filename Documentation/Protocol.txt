@@ -1,1 +1,20 @@
-﻿Max Block size:
+﻿The P2P Networking Protocol that ArakCoin uses is defined as communication between two hosts that adheres to both the Communication and Message Protocol. The Communication Protocol outlines how clients can communicate with nodes, and the Message Protocol outlines what should be contained in the sent and received messages during said communication.
+
+Communication Protocol:
+1) Only clients can initiate connections to nodes, nodes must listen for client connections. Nodes behave as both clients and nodes depending upon whether they're initiating the connection with another node (making them a client for that connection) or listening for a connection (making them a node for that connection). Nodes treat connections intiated by both clients and other nodes as the same.
+2) Both nodes and clients can communicate with one another after the connection is established (taking turns as sender and receiver). Communication is done using TCP as the transport layer protocol via a sockets connection, with a custom P2P protocol on top of it specific to this application, as defined in the following steps. 
+3) After the client establishes a connection with a node, the client acts as the initial sender, and the node as the initial receiver.
+4) The sender will divide its stream to the receiver in 1024 byte segments, where each segment is sent as a single buffered unit
+5) End of stream is communicated as "\n" (newline char) from the sender, which will exist as the final byte in the most recently received byte segment. This byte will reverse the role of sender to receiver, and receiver to sender.
+6) During the stream, if the receiver is still waiting for the next byte segment, but the receiver has waited 2000ms, the receiver will terminate the connection as having failed.
+7) After connection establishment, the client will send its message to the node as the first message stream. The node will then reply with the desired data as its message stream. The connection should then successfully terminate.
+
+The above signifies the base communication protocol
+
+Message Protocol:
+All messages are to be sent/received via the NetworkMessage type (contained in NetworkMessage.cs), which contains an enum specifying the type of the message being sent, and a raw string with its content. Clients may optionally send their Host data within the sent NetworkMessage if they are a node, so the receiver can initiate a new connection with them later (eg: to request a blockchain if the block they received from the client has a higher index than the local blockchain).
+
+The Message Protocol is not fixed and may be updated, please see the MessageTypeEnum.cs enum for the latest comments relating to enums and how clients and nodes should behave when they are sent.
+
+The above signifies the message protocol
+	

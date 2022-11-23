@@ -108,7 +108,7 @@ public class Transaction
         foreach (var tx in block.transactions.Skip(1)) //loop through normal (non-coinbase) transactions
         {
 	        //then add the miner fees from each normal transaction in the block
-	        correctReward += Transaction.getMinerFeesFromTransaction(tx);
+	        correctReward += Transaction.getMinerFeeFromTransaction(tx);
 	        
 	        //also assert there can only be one coinbase tx in the block
 	        if (tx.isCoinbaseTx)
@@ -123,7 +123,7 @@ public class Transaction
         return true; //all checks passed
 	}
 	
-	/*
+	/**
 	 * Checks whether *normal* transaction is valid within the context of the given uTxOuts
 	 */
 	public static bool isValidTransaction(Transaction tx, UTxOut[] uTxOuts)
@@ -184,7 +184,8 @@ public class Transaction
 	    
         //retrieve all TxIns from the transaction pool
         var txPoolIns = getTxInsFromTransactionContainer(txPool);
-
+        
+        //compare pool TxIns to the transaction's TxIns. If any match, the transaction isn't valid within the pool
         foreach (var txIn in tx.txIns)
         {
             foreach (var txPoolIn in txPoolIns)
@@ -200,13 +201,14 @@ public class Transaction
     /**
      * Returns whether the transaction meets requirements to be added to the mempool for this node. Note that
      * unlike the method *isValidTransactionWithinPool*, this method additionally asserts that local settings
-     * (such as minimum miner fee) are satisfied
+     * (such as minimum miner fee) are satisfied. There's an optional parameter to ignore the pool size check
+     * as specified in the node's settings file (default value of this is set to false)
      */
     public static bool doesTransactionMeetMemPoolAddRequirements(Transaction tx, 
-	    List<Transaction> txPool, UTxOut[] uTxOuts)
+	    List<Transaction> txPool, UTxOut[] uTxOuts, bool ignorePoolSize = false)
     {
 	    //first make sure the mempool isn't full as specified in the node's settings
-	    if (txPool.Count >= Settings.maxMempoolSize)
+	    if (!ignorePoolSize && txPool.Count >= Settings.maxMempoolSize)
 		    return false;
 	    
 	    //next assert tx is valid within the context of the pool
@@ -214,17 +216,7 @@ public class Transaction
 			return false;
 
 	    //lastly assert the miner fee meets threshold requirements for this node
-	    long minerFee = 0;
-	    foreach (var txOut in tx.txOuts)
-	    {
-		    if (txOut.address == Protocol.FEE_ADDRESS)
-		    {
-			    minerFee = txOut.amount;
-			    break;
-		    }
-	    }
-
-	    return minerFee >= Settings.minMinerFee;
+	    return getMinerFeeFromTransaction(tx) >= Settings.minMinerFee;
     }
 
     public static long getTotalAmountFromTxOuts(TxOut[] TxOuts)
@@ -236,7 +228,7 @@ public class Transaction
         return total;
     }
 
-    /*
+    /**
      * Given a container of transactions and related UtxOuts, return an updated container of UtxOuts which removes any
      * spent ones from the input UTxouts, and adds new ones from the transactions TxOuts
      */
@@ -273,18 +265,23 @@ public class Transaction
         return updatedUTxOuts.ToArray();
     }
 
-    //examines the TxOuts in the Transaction where the receiving address is the protocol
-    //fee address. The miner may claim these coins for themselves as the transaction reward, as part
-    //of the coinbase transaction. Note: It's assumed the input transaction has been validated before
-    //the return value from here is used. This function does not perform any validation
-    public static long getMinerFeesFromTransaction(Transaction transaction)
+    /**
+    * Examines the TxOuts in the Transaction where the receiving address is the protocol
+    * fee address. The miner may claim these coins for themselves as the transaction reward, as part
+    * of the coinbase transaction. Note: It's assumed the input transaction has been validated before
+    * the return value from here is used. This function does not perform any validation
+    */
+    public static long getMinerFeeFromTransaction(Transaction transaction)
     {
 	    long minerCoins = 0;
 	    
 	    foreach (var txOut in transaction.txOuts)
 	    {
 		    if (txOut.address == Protocol.FEE_ADDRESS)
+		    {
 			    minerCoins += txOut.amount;
+			    break;
+		    }
 	    }
 
 	    return minerCoins;

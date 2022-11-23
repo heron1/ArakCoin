@@ -25,7 +25,7 @@ public static class TransactionFactory
     
     //Attempt to create transaction given some txouts. If fails, returns null. Note: This will mutate the
     //input mempool to include the new transaction if successful by default, however
-    //only if the transaction can be legally appended to the mempool, otherwise null is returned.
+    //only if the transaction can be legally added to the mempool, otherwise null is returned.
     //Set addToMemPool to false to simply create a transaction only and return it without any mutation
     public static Transaction? createTransaction(TxOut[] txOuts, string privateKey,
         UTxOut[] uTxOuts, List<Transaction> mempool, 
@@ -138,12 +138,9 @@ public static class TransactionFactory
 
         if (addToMemPool)
         {
-            //assert transaction can be legally added to mempool, and if so, do it
-            //otherwise return null
-            if (!doesTransactionMeetMemPoolAddRequirements(tx, mempool, uTxOuts))
+            //assert transaction can be legally added to mempool, and if so, do it, otherwise return null
+            if (!Blockchain.addTransactionToMempoolGivenNodeRequirements(tx, mempool, uTxOuts))
                 return null;
-
-            mempool.Add(tx);
         }
 
         return tx;
@@ -163,7 +160,7 @@ public static class TransactionFactory
         {
             foreach (var tx in transactions)
             {
-                totalReward += Transaction.getMinerFeesFromTransaction(tx);
+                totalReward += Transaction.getMinerFeeFromTransaction(tx);
             }
         }
 

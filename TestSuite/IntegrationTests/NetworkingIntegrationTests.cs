@@ -13,9 +13,8 @@ public class NetworkingIntegrationTests
 {
     /**
      * Note these integration tests only test networking on the local machine (both client and node reside locally).
-     * Functional tests testing external host-to-host communication exist in the FunctionalTests section,
-     * and require that a list of external hosts (at least 1) is provided. *
-     * //todo this - or rather make it as a manual test
+     * The ManualTests project will allow manual testing & observation of the network in an actual distributed
+     * environment.
      *
      * Note these tests cannot be run in parallel, and also the nodeListener must be
      * stopped at the end of each test. This is to ensure a networking socket is available for the next test. 

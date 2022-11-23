@@ -68,6 +68,16 @@ public class Utilities
 			return BitConverter.ToInt32(rno, 0); 
 		}
 	}
+
+	/**
+	 * Allows the slicing of a List with the given start and end index. Does not mutate the input list, but instead
+	 * returns a new list. Implementation may change over time to be more efficient. The generic parameter should be
+	 * the type of object contained in the list
+	 */
+	public static List<T> sliceList<T>(List<T> list, int startIndex, int endIndex)
+	{
+		return list.ToArray()[startIndex..endIndex].ToList();
+	}
 	
 	/**
 	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere.

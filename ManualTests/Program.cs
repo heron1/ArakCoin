@@ -16,13 +16,6 @@ namespace ManualTests
  */
     internal static class Program
     {
-        //nodes to participate in the manual connectivity tests (different to hosts file)
-        private static List<Host> nodes = new List<Host>()
-        {
-            new Host("192.168.1.7", 8000),
-            new Host("192.168.1.19", 8000)
-        };
-        
         static void Main(string[] args)
         {
             //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
@@ -32,38 +25,6 @@ namespace ManualTests
 
         }
 
-        /**
-         * Basic test to see if a given list of hosts can communicate both ways. Make sure all nodes have executed
-         * the test before pressing the key to continue, which will begin the test
-         */
-        public static async Task TestNetworkConnectivityFromManualNodesList()
-        {
-            var listener = new NodeListenerServer();
-            listener.startListeningServer();
-
-            Console.WriteLine("Press Enter to continue (once all hosts running test)..");
-            Console.ReadLine();
-            Console.WriteLine("Continuing..");
-		
-            bool nodesWorking = true;
-            foreach (var node in nodes)
-            {
-                var networkMsg = new NetworkMessage(MessageTypeEnum.ECHO, "hello world");
-                var resp = await Communication.communicateWithNode(networkMsg, node);
-                if (resp is null || resp.messageTypeEnum != MessageTypeEnum.ECHO)
-                {
-                    nodesWorking = false;
-                    Console.WriteLine($"Communication failed with {node.ToString()}");
-                    break;
-                }
-                
-                Console.WriteLine($"Communication succeeded with {node.ToString()}");
-            }
-
-            Console.WriteLine("Press key to end the program..");
-            Console.ReadLine();
-        }
-        
         /**
          * Basic test to see if the nodes in the hosts file can communicate. Make sure all nodes have executed
          * the test before pressing the key to continue, which will begin the test. All nodes should share the same
@@ -145,6 +106,7 @@ namespace ManualTests
          */
         public static async Task TestSimulatedNetworkInteraction()
         {
+            
             //todo this
         }
         

@@ -111,11 +111,9 @@ public static class AsyncTasks
 
     /**
      * Asynchronously broadcast this node's mempool to known nodes periodically, but only if the mempool has changed
-     * since the last broadcast. Nodes should not immediately broadcast every created transaction they receive, as
+     * since the last broadcast. Nodes should not immediately broadcast every transaction they receive, as
      * this could very easily lead to spam. Instead, they should periodically broadcast their mempool.
      */
-    //todo - mempool rework -> allow any size so long as received tx is valid. Test this still works. (write tests)
-    //todo - nodeListener to also respond to incoming mempools
     public static CancellationTokenSource shareMempoolAsync(int secondsDelay)
     {
         secondsDelay *= 1000; //convert input seconds into milliseconds

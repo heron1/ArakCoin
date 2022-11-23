@@ -28,7 +28,7 @@ public static class BlockFactory
 		return block;
 	}
 
-	/** returns true if a new block is successfully mined and added to blockchain, false if not. Will automatically
+	/** Returns true if a new block is successfully mined and added to blockchain, false if not. Will automatically
 	 * include transactions from the mempool (if any)
 	 */
 	public static bool mineNextBlockAndAddToBlockchain(Blockchain blockchain)

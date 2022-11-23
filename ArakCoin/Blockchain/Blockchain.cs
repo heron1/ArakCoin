@@ -16,8 +16,6 @@ public class Blockchain
 	
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
-	//todo - actually might make the mempool size dynamic however mining just takes the top max block txes - still limit it
-	//as a local user setting
 	private readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
 
 	/**
@@ -27,11 +25,14 @@ public class Blockchain
 	 */
 	private LinkedListNode<Block>? getBlockNodeByIndex(int index)
 	{
+		lock (blockchain)
+		{
 		LinkedListNode<Block>? node = blockchain.Last;
 		while (node is not null && node.Value.index != index)
 			node = node.Previous;
 
 		return node;
+		}
 	}
 
 	/**
@@ -448,16 +449,79 @@ public class Blockchain
 		return false;
 	}
 
-	//adds the given transaction to the mempool, only if it meets the requirements for this node
-	//note this may fail whilst protocol requirements may pass (use Transaction.isValidTransactionWithinPool to see
-	//if the tx passes protocol requirements). Returns true if success, otherwise false
-	public bool addTransactionToMempoolGivenNodeRequirements(Transaction tx)
+	/**
+	 * Adds the given transaction to the mempool in a position corresponding to its miner fee, but only if it meets the
+	 * add requirements for this node. Note this may fail whilst protocol requirements may pass
+	 * (use Transaction.isValidTransactionWithinPool to see if the tx passes protocol requirements).
+	 *
+	 * In the event the mempool is already full, the input transaction will replace the one at the end of the existing
+	 * mempool if it has a higher fee, provided the allowOverride parameter is set to true (default), otherwise it
+	 * won't be added. Note that the *doesTransactionMeetMemPoolAddRequirements* function won't check for this by
+	 * default and would return the transaction as not being valid within the mempool if it's already full. The method
+	 * here is special in that it can delete an existing valid transaction to create room for a higher paying one,
+	 * if required.
+	 * 
+	 * Returns true if transaction was successfully added to the mempool, otherwise false
+	 */
+	public static bool addTransactionToMempoolGivenNodeRequirements(Transaction tx, List<Transaction> mempool,
+		UTxOut[] uTxOuts, bool allowOverride = true)
 	{
-		if (!Transaction.doesTransactionMeetMemPoolAddRequirements(tx, mempool, uTxOuts))
+		if (!Transaction.doesTransactionMeetMemPoolAddRequirements(tx, mempool, uTxOuts, allowOverride))
 			return false;
 
-		mempool.Add(tx);
+		//the miner fee that this transaction is paying
+		long txFee = Transaction.getMinerFeeFromTransaction(tx);
+
+		//keeps track of whether this transaction was inserted into the mempool & pushed another one down the mempool
+		bool wasTxInserted = false; 
+		
+		//the ordering within the mempool should be based upon miner fee
+		for (int i = 0; i < mempool.Count; i++)
+		{
+			if (Transaction.getMinerFeeFromTransaction(mempool[i]) < txFee)
+			{
+				mempool.Insert(i, tx);
+				wasTxInserted = true;
+				break;
+			}
+		}
+
+		if (!wasTxInserted && mempool.Count >= Settings.maxMempoolSize)
+		{
+			//mempool is full and this transaction hasn't paid a higher fee than any other transaction in the pool,
+			//therefore the add operation fails
+			return false;
+		}
+		else if (!wasTxInserted)
+		{
+			//mempool isn't full, so we add this transaction to the end of the pool successfully
+			mempool.Add(tx);
+		}
+		else if (wasTxInserted && mempool.Count > Settings.maxMempoolSize)
+		{
+			//this transaction was added to the mempool, however it caused another transaction paying the lowest fee to
+			//be pushed beyond the legally allowed mempool size. We will remove this last tx
+			mempool.RemoveAt(mempool.Count - 1);
+			
+			//if somehow the mempool is still too large, then this should be logged and investigated, as the logical
+			//flow of the program should not allow this
+			if (mempool.Count > Settings.maxMempoolSize)
+			{
+				Utilities.exceptionLog($"Mempool somehow illegaly acquired length of {mempool.Count} after removing" +
+				                       $"last element");
+			}
+		}
+		
+		//transaction was successfully added
 		return true;
+	}
+	
+	public bool addTransactionToMempoolGivenNodeRequirements(Transaction tx, bool allowOverride = true)
+	{
+		lock (blockChainLock)
+		{
+			return addTransactionToMempoolGivenNodeRequirements(tx, mempool, uTxOuts, allowOverride);
+		}
 	}
 
 	//clears the current mempool
@@ -485,7 +549,10 @@ public class Blockchain
 	//validates this blockchain's mempool
 	public bool validateMemPool()
 	{
-		return validateMemPool(this.mempool, this.uTxOuts);
+		lock (blockChainLock)
+		{
+			return validateMemPool(this.mempool, this.uTxOuts);
+		}
 	}
 
 	/**
@@ -499,7 +566,6 @@ public class Blockchain
 			if (Transaction.isValidTransaction(tx, uTxOuts))
 				newPool.Add(tx);
 		
-		//todo unit/integration tests for this
 		return newPool;
 	}
 
@@ -509,43 +575,27 @@ public class Blockchain
 	 */
 	public void sanitizeMempool()
 	{
-		this.mempool = sanitizeMempool(this.mempool, this.uTxOuts);
+		lock (blockChainLock)
+		{
+			this.mempool = sanitizeMempool(this.mempool, this.uTxOuts);
+		}
 	}
 
 	/**
-	 * Retrieve the top transactions from the mempool for a block mine and return them as an array. Does not mutate
-	 * the mempool
+	 * Retrieve the highest priority transactions from the mempool for a block mine and return them as an array.
+	 * Does not mutate the mempool
 	 */
 	public Transaction[] getTxesFromMempoolForBlockMine()
 	{
-		int endIndex;
-		if (mempool.Count < Protocol.MAX_TRANSACTIONS_PER_BLOCK)
-			endIndex = mempool.Count;
-		else
-			endIndex = Protocol.MAX_TRANSACTIONS_PER_BLOCK - 1; //leave space for 1 extra tx for the coinbase tx
-		
-		return this.mempool.ToArray()[..(endIndex)];
-	}
+		lock (blockChainLock) {
+			int endIndex;
+			if (mempool.Count < Protocol.MAX_TRANSACTIONS_PER_BLOCK)
+				endIndex = mempool.Count;
+			else
+				endIndex = Protocol.MAX_TRANSACTIONS_PER_BLOCK - 1; //leave space for 1 extra tx for the coinbase tx
 
-	//TODO IMPORTANT -> the below two methods should prioritize txes with a higher fee to appear at the start of the 
-	//mempool, so that when mining begins the first txes chosen are the ones with highest fee
-	
-	//TODO - this is proposed advanced functionality. If time permits, then given a list of input mempools, retrieve the txes
-	//that fill a new mempool up to the allowed protocol size, with the maximum miner fees, whilst ensuring all
-	//transactions are valid. This would allow miners to communicate mempools with one another whilst retaining an
-	//optimal local mempool which may be different to other nodes, whilst still using some received
-	//mempool transactions (if miner fees in such txes are higher than locally
-	//pooled txes and such txes don't yet exist in the local pool, they can be added/replaced within the local pool).
-	public List<Transaction>? createOptimalMempool(List<List<Transaction>> mempools)
-	{
-		return null;
-	}
-	
-	//TODO - Given a list of mempools, return the valid one with the greatest accumulative miner fees. Useful for
-	//inter-node communication to get the best mempool
-	public List<Transaction>? getBestMempool(List<List<Transaction>> mempools)
-	{
-		return null;
+			return Utilities.sliceList(this.mempool, 0, endIndex).ToArray();
+		}
 	}
 
 	/**
@@ -618,7 +668,6 @@ public class Blockchain
 	}
 	
 	#endregion
-	
 	
 	#region equality override
 	
