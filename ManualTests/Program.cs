@@ -114,6 +114,7 @@ namespace ManualTests
                 "dcacb71463dc0d168c9ed87f58c669ad0c96c4ecad08810b4d35dbdb7e50934e"
             };
             publicKeys.Remove(Settings.nodePublicKey); //remove this node's public key
+            Console.WriteLine($"This node has public key: {Settings.nodePublicKey}");
             // END TEST SETUP, BEGIN TEST INITIALIZATION
 
             //load any local chain we have stored as a candidate for the network consensus chain
@@ -149,42 +150,46 @@ namespace ManualTests
             {
                 List <TxRecord> txRecords = new List<TxRecord>(); //easy way to keep track of transfers for this test
 
-                //attempt to create some random number of TxOuts with a 30% probability this operation stops after each
+                //attempt to create some random number of TxOuts with a 25% probability this operation stops after each
                 List<TxOut> txouts = new List<TxOut>();
                 int balance = (int)Wallet.getAddressBalance(Settings.nodePublicKey);
-                while (random.NextDouble() < 0.7)
+                while (random.NextDouble() < 0.75)
                 {
                     if (balance == 0)
                         break;
 
                     string randomPublicKey = publicKeys[random.Next(0, publicKeys.Count - 1)];
-                    txouts.Add(new TxOut(randomPublicKey, random.Next(1,balance/2)));
+                    txouts.Add(new TxOut(randomPublicKey, random.Next(1,balance/10)));
                 }
                 
-                //tx creation may or may not succeed, but this doesn't matter
+                //create tx if there's at least 2 txouts. tx creation may or may not succeed, but this doesn't matter
                 //(we test both valid and invalid transaction creation)
-                long minerFee = random.Next(0, balance / 10);
-                Transaction? tx = TransactionFactory.createNewTransactionForBlockchain(txouts.ToArray(), 
-                    Settings.nodePrivateKey, Global.masterChain, minerFee);
-                if (tx is not null)
+                if (txouts.Count >= 2)
                 {
-                    foreach (var txOut in tx.txOuts)
+                    long minerFee = random.Next(0, balance / 20);
+                    Transaction? tx = TransactionFactory.createNewTransactionForBlockchain(txouts.ToArray(),
+                        Settings.nodePrivateKey, Global.masterChain, minerFee);
+                    if (tx is not null)
                     {
-                        if (txOut.address != Protocol.FEE_ADDRESS)
-                            txRecords.Add(new TxRecord(Settings.nodePublicKey, txOut.address,
-                                txOut.amount, tx.id!, minerFee));
+                        foreach (var txOut in tx.txOuts)
+                        {
+                            if (txOut.address != Protocol.FEE_ADDRESS)
+                                txRecords.Add(new TxRecord(Settings.nodePublicKey, txOut.address,
+                                    txOut.amount, tx.id!, minerFee));
+                        }
                     }
-                }
 
-                if (tx is not null)
-                {
-                    Utilities.log("We created a new locally valid tx and added it to our mempool:");
-                    foreach (var txRecord in txRecords)
+                    if (tx is not null)
                     {
-                        Utilities.log($"\t{txRecord.amount} coins to be sent to " +
-                                      $"{txRecord.receiver.Substring(0, 3)}..., " 
-                                      + $"(from tx: {txRecord.transactionId.Substring(0, 3)}, " +
-                                      $"fee: {txRecord.minerFee})...");
+                        Utilities.log($"We created a new locally valid tx and added it to our " +
+                                      $"mempool (new size {Global.masterChain.mempool.Count}):");
+                        foreach (var txRecord in txRecords)
+                        {
+                            Utilities.log($"\t{txRecord.amount} coins to be sent to " +
+                                          $"{txRecord.receiver.Substring(0, 3)}..., "
+                                          + $"(from tx: {txRecord.transactionId.Substring(0, 3)}, " +
+                                          $"fee: {txRecord.minerFee})...");
+                        }
                     }
                 }
                 

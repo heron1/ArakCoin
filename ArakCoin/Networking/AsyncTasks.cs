@@ -25,7 +25,8 @@ public static class AsyncTasks
                     if (!cancelToken.IsCancellationRequested)
                     {
                         //create and begin mining the next block on this node's own local master chain
-                        Global.nextBlock = BlockFactory.createNewBlock(Global.masterChain);
+                        Transaction[] toBeMinedTx = Global.masterChain.getTxesFromMempoolForBlockMine();
+                        Global.nextBlock = BlockFactory.createNewBlock(Global.masterChain, toBeMinedTx);
                         if (!Blockchain.isGenesisBlock(Global.nextBlock))
                             Global.nextBlock.mineBlock();
 

@@ -172,7 +172,7 @@ public class TransactionIntegration
 		Assert.IsTrue(add2Balance == 0);
 		Assert.IsTrue(add3Balance == 0);
 
-		//mine another block, distributed 30 coins each to testPublicKey2, testPublickey3 in a tx
+		//mine another block, distribute 30 coins each to testPublicKey2, testPublickey3 in a tx
 		//from this node
 		Transaction? txCreate = TransactionFactory.createNewTransactionForBlockchain(
 			new TxOut[]

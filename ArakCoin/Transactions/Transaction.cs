@@ -286,6 +286,15 @@ public class Transaction
 
 	    return minerCoins;
     }
+
+    /**
+     * Attempts to retrieve the public key from the input mined block. The caller is assumed to provide a correctly
+     * mined block otherwise an exception may be thrown.
+     */
+    public static string getMinerPublicKeyFromBlock(Block block)
+    {
+	    return block.transactions[0].txOuts[0].address;
+    }
     
     #region equality override
     public override bool Equals(object? o)
