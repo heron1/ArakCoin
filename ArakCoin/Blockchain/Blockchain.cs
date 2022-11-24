@@ -512,6 +512,8 @@ public class Blockchain
 		}
 		
 		//transaction was successfully added
+		Utilities.log($"Added tx with id {tx.id.ToString().Substring(0, 3)}.. " +
+		              $"(paying {Transaction.getMinerFeeFromTransaction(tx)} fee) to local mempool");
 		return true;
 	}
 	
@@ -632,6 +634,47 @@ public class Blockchain
 		}
 
 		return winningChain;
+	}
+
+	/**
+	 * Saves the main blockchain located on this host to disk. Returns whether this was successfully done
+	 */
+	public static bool saveMasterChainToDisk(string filename = "master_blockchain")
+	{
+		lock (Global.masterChain.blockChainLock)
+		{
+			var serializedChain = Serialize.serializeBlockchainToJson(Global.masterChain);
+			if (serializedChain is null)
+				return false;
+
+			if (!Storage.writeJsonToDisk(serializedChain, filename))
+				return false;
+
+			return true;
+		}
+	}
+
+	/**
+	 * Loads the main blockchain located on this host from disk into memory, and validates it. Returns whether this was
+	 * successfully done
+	 */
+	public static bool loadMasterChainFromDisk(string filename = "master_blockchain")
+	{
+		var serializedChain = Storage.readJsonFromDisk(filename);
+		if (serializedChain is null)
+			return false;
+
+		var deserializedChain = Serialize.deserializeJsonToBlockchain(serializedChain);
+		if (deserializedChain is null)
+			return false;
+		
+		//validate the blockchain
+		if (!deserializedChain.isBlockchainValid())
+			return false;
+
+		//sucessfully loaded and validated the masterchain. Set it as the global chain
+		Global.masterChain = deserializedChain;
+		return true;
 	}
 
 	#region Blockchain Helper Methods

@@ -34,6 +34,7 @@ public static class AsyncTasks
                         {
                             Utilities.log($"This node mined block #{Global.nextBlock.index}, broadcasting it..");
                             NetworkingManager.broadcastNextValidBlock(Global.nextBlock);
+                            GlobalHandler.handleMasterBlockchainUpdate(); //handle the blockchain update
                         }
                         else
                         {
@@ -123,7 +124,7 @@ public static class AsyncTasks
         //store copy of the old mempool as a HashSet. We do this because a HashSet doesn't care about ordering ->
         //we're only interested if all the txes in the mempool are equal or not, not their order (nodes may have
         //their own way of prioritizing the same txes besides using tx fees which is the standard method)
-        var lastMempoolHashSet = new HashSet<Transaction>(Global.masterChain.mempool); 
+        HashSet<Transaction> lastMempoolHashSet = new HashSet<Transaction>(); //initialize empty for 1st broadcast
 
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
@@ -135,7 +136,7 @@ public static class AsyncTasks
                 {
                     //if the members of the current mempool are not identical to the old stored mempool, we do
                     //a mempool broadcast. Otherwise, we don't.
-                    if (lastMempoolHashSet.SetEquals(Global.masterChain.mempool))
+                    if (!lastMempoolHashSet.SetEquals(Global.masterChain.mempool))
                     {
                         Utilities.log("broadcasting updated mempool..");
                         NetworkingManager.broadcastMempool(Global.masterChain.mempool);

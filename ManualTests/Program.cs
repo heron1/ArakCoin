@@ -5,6 +5,7 @@
 using System.Text;
 using ArakCoin;
 using ArakCoin.Networking;
+using ArakCoin.Transactions;
 
 
 namespace ManualTests
@@ -21,7 +22,7 @@ namespace ManualTests
             //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
             //as desired. ALTERNATIVELY: This project could be executed with different command line arguments indicating
             //the desired test, along with any arguments for the test (where applicable).
-            TestBasicNetworkInteraction().Wait();
+            TestSimulatedNetworkInteraction().Wait();
 
         }
 
@@ -106,6 +107,18 @@ namespace ManualTests
          */
         public static async Task TestSimulatedNetworkInteraction()
         {
+            // MANUALLY SETUP PUBLIC KEYS OF ALL NODES HERE FOR TX SIMULATION (only required for this test)
+            List<string> publicKeys = new List<string>()
+            {
+                "1f62745d8f64ac7c9e28a17ad113cb2e4d1bd85e6eb6896f58de3bf3cabcd1b9",
+                "dcacb71463dc0d168c9ed87f58c669ad0c96c4ecad08810b4d35dbdb7e50934e"
+            };
+            publicKeys.Remove(Settings.nodePublicKey); //remove this node's public key
+            // END TEST SETUP, BEGIN TEST INITIALIZATION
+
+            //load any local chain we have stored as a candidate for the network consensus chain
+            Blockchain.loadMasterChainFromDisk();
+            
             Console.WriteLine("Attempting to establishing consensus chain from network..");
             NetworkingManager.synchronizeConsensusChainFromNetwork();
             Console.WriteLine($"Local chain set with length {Global.masterChain.getLength()} " +
@@ -127,7 +140,57 @@ namespace ManualTests
             
             //begin periodic mempool broadcasting as a new Task in the background
             Global.mempoolCancelToken = AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
+            // END OF CORE PROTOCOL SETUP - AUTOMATED BEHAVIOUR OF NODES FOLLOW
+            
+            //initialize the RNG
+            int seed = Utilities.getTrulyRandomNumber();
+            Random random = new Random(seed);
+            while (true)
+            {
+                List <TxRecord> txRecords = new List<TxRecord>(); //easy way to keep track of transfers for this test
 
+                //attempt to create some random number of TxOuts with a 30% probability this operation stops after each
+                List<TxOut> txouts = new List<TxOut>();
+                int balance = (int)Wallet.getAddressBalance(Settings.nodePublicKey);
+                while (random.NextDouble() < 0.7)
+                {
+                    if (balance == 0)
+                        break;
+
+                    string randomPublicKey = publicKeys[random.Next(0, publicKeys.Count - 1)];
+                    txouts.Add(new TxOut(randomPublicKey, random.Next(1,balance/2)));
+                }
+                
+                //tx creation may or may not succeed, but this doesn't matter
+                //(we test both valid and invalid transaction creation)
+                long minerFee = random.Next(0, balance / 10);
+                Transaction? tx = TransactionFactory.createNewTransactionForBlockchain(txouts.ToArray(), 
+                    Settings.nodePrivateKey, Global.masterChain, minerFee);
+                if (tx is not null)
+                {
+                    foreach (var txOut in tx.txOuts)
+                    {
+                        if (txOut.address != Protocol.FEE_ADDRESS)
+                            txRecords.Add(new TxRecord(Settings.nodePublicKey, txOut.address,
+                                txOut.amount, tx.id!, minerFee));
+                    }
+                }
+
+                if (tx is not null)
+                {
+                    Utilities.log("We created a new locally valid tx and added it to our mempool:");
+                    foreach (var txRecord in txRecords)
+                    {
+                        Utilities.log($"\t{txRecord.amount} coins to be sent to " +
+                                      $"{txRecord.receiver.Substring(0, 3)}..., " 
+                                      + $"(from tx: {txRecord.transactionId.Substring(0, 3)}, " +
+                                      $"fee: {txRecord.minerFee})...");
+                    }
+                }
+                
+                //sleep this thread for some random time (async background threads will still run)
+                Utilities.sleep(random.Next(0, 10000)); 
+            }
         }
         
         

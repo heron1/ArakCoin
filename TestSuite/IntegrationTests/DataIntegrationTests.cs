@@ -211,16 +211,12 @@ public class DataIntegrationTests
         string? junkData = Storage.readJsonFromDisk($"invalid_{Settings.jsonFilename}");
         Assert.IsNotNull(junkData);
         Assert.IsTrue(junkData == "some bad data");
-
-
-
     }
     
     [Test]
     public void Temp()
     {
-        // var set = Serialize.serializeSettingsToJson();
-        int b = 3;
+       
 
 
     }

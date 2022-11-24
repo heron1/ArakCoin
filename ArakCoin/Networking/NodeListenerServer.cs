@@ -151,7 +151,7 @@ public class NodeListenerServer : IDisposable
                 if (Global.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
                 {
                     //ensure this program is aware of the blockchain update due to external source
-                    handleExternalBlockchainUpdate(networkMessage.sendingNode); 
+                    GlobalHandler.handleExternalBlockchainUpdate(networkMessage.sendingNode); 
                     
                     //return success message
                     return new NetworkMessage(MessageTypeEnum.NEXTBLOCK, "");
@@ -180,7 +180,10 @@ public class NodeListenerServer : IDisposable
                     return createErrorNetworkMessage("Received mempool could not be deserialized");
                 
                 //shrink the received mempool to respect our Settings.maxMempoolSize if it exceeds it
-                var candidateMempool = Utilities.sliceList(receivedMempool, 0, Settings.maxMempoolSize);
+                int endIndex = receivedMempool.Count > Settings.maxMempoolSize
+                    ? Settings.maxMempoolSize
+                    : receivedMempool.Count;
+                var candidateMempool = Utilities.sliceList(receivedMempool, 0, endIndex);
                 
                 //attempt to sequentially add each transaction in the received mempool to our local mempool.
                 //This will also perform validation on every received transaction, and override local transactions that
@@ -266,27 +269,10 @@ public class NodeListenerServer : IDisposable
             Global.masterChain.replaceBlockchain(candidateReplacementChain);
             
             //local state should be updated
-            handleExternalBlockchainUpdate(networkMessage.sendingNode);
+            GlobalHandler.handleExternalBlockchainUpdate(networkMessage.sendingNode);
         }
     }
-
-    /**
-     * In the event an incoming client message causes the local blockchain to be changed (such as receiving a next
-     * valid block, or a replacement consensus chain), this method will ensure that the local state in this program
-     * responds appropriately (eg: if mining, the local next block should stop being mined, and mining should be
-     * resumed on the new updated chain, etc)
-     */
-    private void handleExternalBlockchainUpdate(Host? externalNode = null)
-    {
-        //log the chain update
-        string receivingNode = externalNode is null ? "unknown" : $"{externalNode.ToString()}";
-        Utilities.log($"Node received updated block/chain with length {Global.masterChain.getLength()} from node" +
-                      $" {receivingNode}");
-        
-        //stop current mining if it's occuring on a now outdated block
-        if (Global.nextBlock is not null)
-            Global.nextBlock.cancelMining = true;
-    }
+    
 
     /**
      * Correctly close and dispose of the network connection and used threads when this class is disposed

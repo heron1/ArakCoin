@@ -166,7 +166,7 @@ public class Settings
 	 * This setting is only applicable if the isNode property is set to true.
 	 * Node will attempt to acquire a list of hosts files from all known nodes in its own hosts file, and also
 	 * register itself with them every this number of seconds. Setting this value too low may be considered spam
-	 * and result in the node's IP being blacklisted by some nodes
+	 * and result in the node's IP being blacklisted by some nodes. Recommended to leave as default value.
 	 */
 	[JsonProperty]
 	public static int nodeDiscoveryDelaySeconds = 10;
@@ -174,7 +174,9 @@ public class Settings
 	/**
 	 * This setting is only applicable if the isNode property is set to true.
 	 * Node will broadcast its mempool to all other known nodes in its hosts file every this number of seconds, only
-	 * if the mempool has changed since the last broadcast
+	 * if the mempool has changed since the last broadcast. Setting this value too low may be considered spam
+	 * and result in the node's IP being blacklisted by some nodes, however setting it too high and the node may
+	 * be viewed as not cooperating in mempool sharing. Recommended to leave as default value.
 	 */
 	[JsonProperty]
 	public static int mempoolSharingDelaySeconds = 10;

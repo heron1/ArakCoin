@@ -2,6 +2,9 @@
 
 public class Wallet
 {
+    /**
+     * Retrieve the balance for the given public key address from the given utxouts
+     */
     public static long getAddressBalance(string address, UTxOut[] uTxOuts)
     {
         long sum = 0;
@@ -15,6 +18,17 @@ public class Wallet
         return sum;
     }
 
+    /**
+     * Overloaded version of getAddressBalance that uses the global masterchain as the source of utxouts
+     */
+    public static long getAddressBalance(string address)
+    {
+        return getAddressBalance(address, Global.masterChain.uTxOuts);
+    }
+    
+    /**
+     * Retrieves the total circulating supply of all unspent coins within the given blockchain object
+     */
     public static long getCurrentCirculatingCoinSupply(Blockchain blockchain)
     {
         long totalCirculatingSupply = 0;
