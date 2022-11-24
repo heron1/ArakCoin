@@ -170,6 +170,14 @@ public class Settings
 	 */
 	[JsonProperty]
 	public static int nodeDiscoveryDelaySeconds = 10;
+	
+	/**
+	 * This setting is only applicable if the isNode property is set to true.
+	 * Node will broadcast its mempool to all other known nodes in its hosts file every this number of seconds, only
+	 * if the mempool has changed since the last broadcast
+	 */
+	[JsonProperty]
+	public static int mempoolSharingDelaySeconds = 10;
 
 	/**
 	 * The number of characters this node will allow for a valid ECHO request/response. It's recommended to leave this

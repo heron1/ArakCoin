@@ -27,11 +27,11 @@ public class Blockchain
 	{
 		lock (blockchain)
 		{
-		LinkedListNode<Block>? node = blockchain.Last;
-		while (node is not null && node.Value.index != index)
-			node = node.Previous;
+			LinkedListNode<Block>? node = blockchain.Last;
+			while (node is not null && node.Value.index != index)
+				node = node.Previous;
 
-		return node;
+			return node;
 		}
 	}
 
@@ -69,7 +69,6 @@ public class Blockchain
 	public void forceAddBlock(Block block)
 	{
 		blockchain.AddLast(block);
-		
 	}
 
 	/**

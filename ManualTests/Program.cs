@@ -106,8 +106,28 @@ namespace ManualTests
          */
         public static async Task TestSimulatedNetworkInteraction()
         {
+            Console.WriteLine("Attempting to establishing consensus chain from network..");
+            NetworkingManager.synchronizeConsensusChainFromNetwork();
+            Console.WriteLine($"Local chain set with length {Global.masterChain.getLength()} " +
+                              $"and accumulative hashpower of" +
+                              $" {Global.masterChain.calculateAccumulativeChainDifficulty()}");
             
-            //todo this
+            var listener = new NodeListenerServer();
+            listener.startListeningServer();
+
+            Console.WriteLine("Press Enter to continue.");
+            Console.ReadLine();
+            Console.WriteLine("Continuing..");
+            
+            //begin mining as a new Task in the background
+            Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+            
+            //begin node discovery & registration as a new Task in the background
+            Global.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+            
+            //begin periodic mempool broadcasting as a new Task in the background
+            Global.mempoolCancelToken = AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
+
         }
         
         
