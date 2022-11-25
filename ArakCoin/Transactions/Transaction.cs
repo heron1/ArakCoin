@@ -225,7 +225,7 @@ public class Transaction
         {
             foreach (var txPoolIn in txPoolIns)
             {
-                if (txIn == txPoolIn)
+                if (TxIn.nonSignatureEqualityCompare(txIn, txPoolIn))
                     return false;
             }
         }

@@ -12,6 +12,17 @@ public class TxIn
 		this.txOutIndex = txOutIndex;
 		this.signature = signature;
 	}
+
+	/**
+	 * Compares the equality of two TxIn objects ignoring the signature. Returns whether they are equal or not
+	 */
+	public static bool nonSignatureEqualityCompare(TxIn txIn1, TxIn txIn2)
+	{
+		if (txIn1.txOutId == txIn2.txOutId && txIn1.txOutIndex == txIn2.txOutIndex)
+			return true;
+
+		return false;
+	}
 	
 	#region equality override
 	public override bool Equals(object? o)

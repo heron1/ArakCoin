@@ -505,13 +505,14 @@ public class Blockchain
 			if (mempool.Count > Settings.maxMempoolSize)
 			{
 				Utilities.exceptionLog($"Mempool somehow illegaly acquired length of {mempool.Count} after removing" +
-				                       $"last element");
+				                       $" last element");
 			}
 		}
 		
 		//transaction was successfully added
 		Utilities.log($"Added tx with id {tx.id.ToString().Substring(0, 3)}.. " +
-		              $"(paying {Transaction.getMinerFeeFromTransaction(tx)} fee) to local mempool");
+		              $"(paying {Transaction.getMinerFeeFromTransaction(tx)} fee) " +
+		              $"to local mempool (size now {mempool.Count})");
 		return true;
 	}
 	
