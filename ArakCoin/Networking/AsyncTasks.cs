@@ -20,26 +20,26 @@ public static class AsyncTasks
         {
             while (true)
             {
-                lock (Global.asyncMiningLock)
+                lock (Globals.asyncMiningLock)
                 {
                     if (!cancelToken.IsCancellationRequested)
                     {
                         //create and begin mining the next block on this node's own local master chain
-                        Transaction[] toBeMinedTx = Global.masterChain.getTxesFromMempoolForBlockMine();
-                        Global.nextBlock = BlockFactory.createNewBlock(Global.masterChain, toBeMinedTx);
-                        if (!Blockchain.isGenesisBlock(Global.nextBlock))
-                            Global.nextBlock.mineBlock();
+                        Transaction[] toBeMinedTx = Globals.masterChain.getTxesFromMempoolForBlockMine();
+                        Globals.nextBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx);
+                        if (!Blockchain.isGenesisBlock(Globals.nextBlock))
+                            Globals.nextBlock.mineBlock();
 
                         //if the block was successfully mined and added to the local chain, broadcast it
-                        if (Global.masterChain.addValidBlock(Global.nextBlock))
+                        if (Globals.masterChain.addValidBlock(Globals.nextBlock))
                         {
-                            Utilities.log($"This node mined block #{Global.nextBlock.index}, broadcasting it..");
-                            NetworkingManager.broadcastNextValidBlock(Global.nextBlock);
+                            Utilities.log($"This node mined block #{Globals.nextBlock.index}, broadcasting it..");
+                            NetworkingManager.broadcastNextValidBlock(Globals.nextBlock);
                             GlobalHandler.handleMasterBlockchainUpdate(); //handle the blockchain update
                         }
                         else
                         {
-                            Utilities.log("Mining failed (chain updated externally)");
+                            Utilities.log("Mining failed (chain most likely updated externally)");
                         }
                     }
                     else
@@ -59,7 +59,7 @@ public static class AsyncTasks
      */
     public static void cancelMineBlocksAsync(CancellationTokenSource cancelTokenSource)
     {
-        lock (Global.asyncMiningLock)
+        lock (Globals.asyncMiningLock)
         {
             cancelTokenSource.Cancel();
         }
@@ -137,13 +137,13 @@ public static class AsyncTasks
                 {
                     //if the members of the current mempool are not identical to the old stored mempool, we do
                     //a mempool broadcast. Otherwise, we don't.
-                    if (!lastMempoolHashSet.SetEquals(Global.masterChain.mempool))
+                    if (!lastMempoolHashSet.SetEquals(Globals.masterChain.mempool))
                     {
                         Utilities.log("broadcasting updated mempool..");
-                        NetworkingManager.broadcastMempool(Global.masterChain.mempool);
+                        NetworkingManager.broadcastMempool(Globals.masterChain.mempool);
                         
                         //re-set the last mempool hashset with the new mempool
-                        lastMempoolHashSet = new HashSet<Transaction>(Global.masterChain.mempool); 
+                        lastMempoolHashSet = new HashSet<Transaction>(Globals.masterChain.mempool); 
                     }
                     
                     Utilities.sleep(secondsDelay);

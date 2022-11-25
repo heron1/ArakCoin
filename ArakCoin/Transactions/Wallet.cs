@@ -23,7 +23,7 @@ public class Wallet
      */
     public static long getAddressBalance(string address)
     {
-        return getAddressBalance(address, Global.masterChain.uTxOuts);
+        return getAddressBalance(address, Globals.masterChain.uTxOuts);
     }
     
     /**

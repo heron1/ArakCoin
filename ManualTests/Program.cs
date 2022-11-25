@@ -2,7 +2,6 @@
 //note: ManualTests in the TestSuite project should be refactored into terminating functional tests that do
 //assertions
 
-using System.Text;
 using ArakCoin;
 using ArakCoin.Networking;
 using ArakCoin.Transactions;
@@ -17,6 +16,13 @@ namespace ManualTests
  */
     internal static class Program
     {
+        // MANUALLY SETUP PUBLIC KEYS OF ALL NODES HERE FOR TX SIMULATION
+        private static List<string> publicKeys = new List<string>()
+        {
+            "1f62745d8f64ac7c9e28a17ad113cb2e4d1bd85e6eb6896f58de3bf3cabcd1b9",
+            "dcacb71463dc0d168c9ed87f58c669ad0c96c4ecad08810b4d35dbdb7e50934e"
+        };
+        
         static void Main(string[] args)
         {
             //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
@@ -24,6 +30,31 @@ namespace ManualTests
             //the desired test, along with any arguments for the test (where applicable).
             TestSimulatedNetworkInteraction().Wait();
 
+        }
+        
+        //display the balances of every known test public key address on a block update, and do test assertions
+        //(this method will need to be subscribed to a block update event)
+        private static void testBlockHandler(Object? obj, Block latestBlock)
+        {
+            Utilities.log("Current test address balances: ");
+            foreach (var key in publicKeys)
+            {
+                Utilities.log($"\t{key.Substring(0, 3)}..: {Wallet.getAddressBalance(key)} coins");
+            }
+
+            //assert the coin supply from utxouts matches the intended total block mining rewards
+            lock (Globals.masterChain.blockChainLock)
+            {
+                long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.BLOCK_REWARD;
+                long actualSupply = Wallet.getCurrentCirculatingCoinSupply(Globals.masterChain);
+                if (correctCoinSupply != actualSupply)
+                    throw new Exception($"Groundbreaking error :'( -> coin supply should be" +
+                                        $" {correctCoinSupply} but is {actualSupply}");
+                else
+                {
+                    Utilities.log($"Correct coin supply asserted as: {actualSupply} (test passed)");
+                }
+            }
         }
 
         /**
@@ -73,9 +104,9 @@ namespace ManualTests
         {
             Console.WriteLine("Attempting to establishing consensus chain from network..");
             NetworkingManager.synchronizeConsensusChainFromNetwork();
-            Console.WriteLine($"Local chain set with length {Global.masterChain.getLength()} " +
+            Console.WriteLine($"Local chain set with length {Globals.masterChain.getLength()} " +
                               $"and accumulative hashpower of" +
-                              $" {Global.masterChain.calculateAccumulativeChainDifficulty()}");
+                              $" {Globals.masterChain.calculateAccumulativeChainDifficulty()}");
             
             var listener = new NodeListenerServer();
             listener.startListeningServer();
@@ -87,10 +118,10 @@ namespace ManualTests
             //SIMULATION BEGINS (end of setup)
             
             //begin mining as a new Task in the background
-            Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+            Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
             
             //begin node discovery & registration as a new Task in the background
-            Global.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+            Globals.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
             
             while (true)
             {
@@ -107,13 +138,9 @@ namespace ManualTests
          */
         public static async Task TestSimulatedNetworkInteraction()
         {
-            // MANUALLY SETUP PUBLIC KEYS OF ALL NODES HERE FOR TX SIMULATION (only required for this test)
-            List<string> publicKeys = new List<string>()
-            {
-                "1f62745d8f64ac7c9e28a17ad113cb2e4d1bd85e6eb6896f58de3bf3cabcd1b9",
-                "dcacb71463dc0d168c9ed87f58c669ad0c96c4ecad08810b4d35dbdb7e50934e"
-            };
-            publicKeys.Remove(Settings.nodePublicKey); //remove this node's public key
+            var localKeys = publicKeys.ToList();
+            localKeys.Remove(Settings.nodePublicKey); //remove this node's public key
+            
             Console.WriteLine($"This node has public key: {Settings.nodePublicKey}");
             // END TEST SETUP, BEGIN TEST INITIALIZATION
 
@@ -122,9 +149,9 @@ namespace ManualTests
             
             Console.WriteLine("Attempting to establishing consensus chain from network..");
             NetworkingManager.synchronizeConsensusChainFromNetwork();
-            Console.WriteLine($"Local chain set with length {Global.masterChain.getLength()} " +
+            Console.WriteLine($"Local chain set with length {Globals.masterChain.getLength()} " +
                               $"and accumulative hashpower of" +
-                              $" {Global.masterChain.calculateAccumulativeChainDifficulty()}");
+                              $" {Globals.masterChain.calculateAccumulativeChainDifficulty()}");
             
             var listener = new NodeListenerServer();
             listener.startListeningServer();
@@ -133,16 +160,19 @@ namespace ManualTests
             Console.ReadLine();
             Console.WriteLine("Continuing..");
             
+            //subscribe to the block update event
+            GlobalHandler.latestBlockUpdateEvent += testBlockHandler;
+            
             //begin mining as a new Task in the background
-            Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+            Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
             
             //begin node discovery & registration as a new Task in the background
-            Global.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+            Globals.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
             
             //begin periodic mempool broadcasting as a new Task in the background
-            Global.mempoolCancelToken = AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
+            Globals.mempoolCancelToken = AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
             // END OF CORE PROTOCOL SETUP - AUTOMATED BEHAVIOUR OF NODES FOLLOW
-            
+
             //initialize the RNG
             int seed = Utilities.getTrulyRandomNumber();
             Random random = new Random(seed);
@@ -158,7 +188,7 @@ namespace ManualTests
                     if (balance == 0)
                         break;
 
-                    string randomPublicKey = publicKeys[random.Next(0, publicKeys.Count - 1)];
+                    string randomPublicKey = localKeys[random.Next(0, localKeys.Count - 1)];
                     txouts.Add(new TxOut(randomPublicKey, random.Next(1,balance/10)));
                 }
                 
@@ -168,7 +198,7 @@ namespace ManualTests
                 {
                     long minerFee = random.Next(0, balance / 20);
                     Transaction? tx = TransactionFactory.createNewTransactionForBlockchain(txouts.ToArray(),
-                        Settings.nodePrivateKey, Global.masterChain, minerFee);
+                        Settings.nodePrivateKey, Globals.masterChain, minerFee);
                     if (tx is not null)
                     {
                         foreach (var txOut in tx.txOuts)
@@ -182,7 +212,7 @@ namespace ManualTests
                     if (tx is not null)
                     {
                         Utilities.log($"We created a new locally valid tx and added it to our " +
-                                      $"mempool (new size {Global.masterChain.mempool.Count}):");
+                                      $"mempool (new size {Globals.masterChain.mempool.Count}):");
                         foreach (var txRecord in txRecords)
                         {
                             Utilities.log($"\t{txRecord.amount} coins to be sent to " +

@@ -16,7 +16,7 @@ public class Blockchain
 	
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
-	private readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
+	public readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
 
 	/**
 	 * Iteratively searches the blockchain in O(n) for the block node with the given index. If not found, returns null
@@ -241,12 +241,14 @@ public class Blockchain
 		if (block.transactions.Length > Protocol.MAX_TRANSACTIONS_PER_BLOCK)
 			return false;
 
-		var tempPool = new List<Transaction>(); //temp new tx pool for block validation
-		
 		//first ensure the first block transaction is a valid coinbase tx for this block
 		if (!Transaction.isValidCoinbaseTransaction(transactions[0], block))
 			return false;
 		
+		//ensure no duplicate txIns
+		if (Transaction.doesTxArrayContainDuplicateTxIn(block.transactions))
+			return false;
+
 		//now validate every normal transaction
 		for (var i = 1; i < transactions.Length; i++)
 		{
@@ -259,13 +261,6 @@ public class Blockchain
 			//check the transaction is valid with respect to the current blockchain snapshot
 			if (!Transaction.isValidTransaction(tx, uTxOuts))
 				return false;
-
-			//if tx is valid, add it to the temporary tx pool in this function's scope to ensure
-			//a subsequent transaction doesn't re-use any of the uTxOuts within this block
-			if (!Transaction.isValidTransactionWithinPool(tx, tempPool, uTxOuts))
-				return false;
-
-			tempPool.Add(tx);
 		}
 
 		return true;
@@ -303,9 +298,12 @@ public class Blockchain
 			return false;
 		if (block.prevBlockHash != Block.calculateBlockHash(lastBlock))
 			return false;
+		if (!isNewBlockTimestampValid(block))
+			return false;
 		if (!validateNextBlockData(block))
 			return false;
-		if (!isNewBlockTimestampValid(block))
+		//temp test below - this shouldn't be necessary, but why is validation sometimes failing without it?
+		if (Wallet.getCurrentCirculatingCoinSupply(this) != (this.getLength() - 1) * Protocol.BLOCK_REWARD)
 			return false;
 		
 		return true;
@@ -564,7 +562,7 @@ public class Blockchain
 	{
 		var newPool = new List<Transaction>();
 		foreach (var tx in mempool)
-			if (Transaction.isValidTransaction(tx, uTxOuts))
+			if (Transaction.isValidTransactionWithinPool(tx, newPool, uTxOuts))
 				newPool.Add(tx);
 		
 		return newPool;
@@ -641,9 +639,9 @@ public class Blockchain
 	 */
 	public static bool saveMasterChainToDisk(string filename = "master_blockchain")
 	{
-		lock (Global.masterChain.blockChainLock)
+		lock (Globals.masterChain.blockChainLock)
 		{
-			var serializedChain = Serialize.serializeBlockchainToJson(Global.masterChain);
+			var serializedChain = Serialize.serializeBlockchainToJson(Globals.masterChain);
 			if (serializedChain is null)
 				return false;
 
@@ -673,7 +671,7 @@ public class Blockchain
 			return false;
 
 		//sucessfully loaded and validated the masterchain. Set it as the global chain
-		Global.masterChain = deserializedChain;
+		Globals.masterChain = deserializedChain;
 		return true;
 	}
 

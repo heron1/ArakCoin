@@ -30,7 +30,7 @@ public class NetworkingIntegrationTests
         Settings.echoCharLimit  = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);
 
-        ArakCoin.Global.masterChain = new Blockchain();
+        ArakCoin.Globals.masterChain = new Blockchain();
     }
     
     [Test]
@@ -42,7 +42,7 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task TestLocalNodeListenerErroneously()
     {
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+        Assert.IsTrue(ArakCoin.Globals.masterChain.getLength() == 0);
 
         //these tests will attempt to break the node listener in various ways using the lower level methods in the
         //Communication class
@@ -135,7 +135,7 @@ public class NetworkingIntegrationTests
         HostsManager.removeNodeFromBlacklist(new Host("1.1.1.1", 9000)); //test node 1
         HostsManager.removeNodeFromBlacklist(new Host("2.2.2.2", 9000)); //test node 2
         
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+        Assert.IsTrue(ArakCoin.Globals.masterChain.getLength() == 0);
         
         //create a listener as the node, and start it
         NodeListenerServer listener = new NodeListenerServer();
@@ -185,7 +185,7 @@ public class NetworkingIntegrationTests
         {
             BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
         }
-        ArakCoin.Global.masterChain = bchain; //set this as the node's main chain
+        ArakCoin.Globals.masterChain = bchain; //set this as the node's main chain
         sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETCHAIN, "");
         resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host); //request the chain
         Assert.IsNotNull(resp);
@@ -220,7 +220,7 @@ public class NetworkingIntegrationTests
         //NEXTBLOCK test - simulate client mining a next valid block and sending it to the node.
         //                 After this is done, the client should request the blockchain from the node and assert
         //                 that this block was indeed added.
-        Block nextValidBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Global.masterChain);
+        Block nextValidBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Globals.masterChain);
         string serializedValidBlock = Serialize.serializeBlockToJson(nextValidBlock);
         sendNetworkMessage = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedValidBlock);
         resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
@@ -238,8 +238,8 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(receivedChain.isBlockchainValid());
         
         //NEXTBLOCK test fail - same as above test except the sent block is invalid. Assert it wasn't added
-        int blockChainLength = ArakCoin.Global.masterChain.getLength();
-        Block invalidNextBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Global.masterChain);
+        int blockChainLength = ArakCoin.Globals.masterChain.getLength();
+        Block invalidNextBlock = BlockFactory.createAndMineNewBlock(ArakCoin.Globals.masterChain);
         invalidNextBlock.timestamp = 1; //invalidate the block
         string serializedInvalidBlock = Serialize.serializeBlockToJson(invalidNextBlock);
         sendNetworkMessage = new NetworkMessage(MessageTypeEnum.NEXTBLOCK, serializedInvalidBlock);
@@ -255,7 +255,7 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETCHAIN);
         receivedChain = Serialize.deserializeJsonToBlockchain(receivedNetworkMessage.rawMessage);
         Assert.IsFalse(receivedChain.getLastBlock() == invalidNextBlock); //invalid block shouldn't have been added
-        Assert.IsTrue(blockChainLength == ArakCoin.Global.masterChain.getLength());
+        Assert.IsTrue(blockChainLength == ArakCoin.Globals.masterChain.getLength());
         Assert.IsTrue(receivedChain.isBlockchainValid());
         
         //NEXTBLOCK test - ahead by 2, but no node sent in the message. So this node cannot do anything to verify
@@ -279,14 +279,14 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETMEMPOOL);
         var receivedMempool = Serialize.deserializeJsonToMempool(receivedNetworkMessage.rawMessage);
         Assert.IsNotNull(receivedMempool);
-        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Global.masterChain.uTxOuts));
+        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Globals.masterChain.uTxOuts));
         
         //GETMEMPOOL test (mempool with a valid tx)
         //add a valid tx to the node's mempool
         var tx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
         {
             new TxOut(Global.testPublicKey, 10)
-        }, Global.testPrivateKey, ArakCoin.Global.masterChain);
+        }, Global.testPrivateKey, ArakCoin.Globals.masterChain);
         //now retrieve the mempool from the node as a client, and assert its tx is the same one as the one created
         //in addition to asserting the mempool is valid
         sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETMEMPOOL, "");
@@ -297,10 +297,10 @@ public class NetworkingIntegrationTests
         receivedMempool = Serialize.deserializeJsonToMempool(receivedNetworkMessage.rawMessage);
         Assert.IsNotNull(receivedMempool);
         Assert.IsTrue(receivedMempool.Count == 1);
-        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Global.masterChain.uTxOuts));
+        Assert.IsTrue(Blockchain.validateMemPool(receivedMempool, ArakCoin.Globals.masterChain.uTxOuts));
         //this is our main assertion for this part:
         Assert.IsTrue(tx == receivedMempool[0]);
-        Assert.IsTrue(ArakCoin.Global.masterChain.mempool.SequenceEqual(receivedMempool));
+        Assert.IsTrue(ArakCoin.Globals.masterChain.mempool.SequenceEqual(receivedMempool));
         
         //GETNODES test - retrieve nodes list from this node as a client, assert operation succeeds
         //add at least 1 P2P node to this node if it doesn't already exist
@@ -340,7 +340,7 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task TestMineBlocksAsync()
     {
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
+        Assert.IsTrue(ArakCoin.Globals.masterChain.getLength() == 0);
         
         //perform this same test twice, so it's known async mining can be started & stopped repeatedly
         for (int i = 0; i < 2; i++)
@@ -349,77 +349,21 @@ public class NetworkingIntegrationTests
             var miningCancellationToken = AsyncTasks.mineBlocksAsync();
 
             //sleep this thread to allow some async mining
-            while (ArakCoin.Global.masterChain.getLength() == 0)
+            while (ArakCoin.Globals.masterChain.getLength() == 0)
                 Utilities.sleep(100);
 
             //cancel the mining and retrieve the immediate chain length
             AsyncTasks.cancelMineBlocksAsync(miningCancellationToken);
-            int chainLength = ArakCoin.Global.masterChain.getLength();
+            int chainLength = ArakCoin.Globals.masterChain.getLength();
 
             //sleep this thread for 1 whole second, no mining should have taken place due to the cancellation
             Utilities.sleep(1000);
-            Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == chainLength);
+            Assert.IsTrue(ArakCoin.Globals.masterChain.getLength() == chainLength);
             
             //clear the chain and perform this test again
-            ArakCoin.Global.masterChain = new Blockchain();
+            ArakCoin.Globals.masterChain = new Blockchain();
         }
     }
-
-    //Test async mining on two separate tasks - this shouldn't result in mining parallelism due to the async mining
-    //lock
-    [Test]
-    public async Task TestConflictingMiningTasksAsync()
-    {
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == 0);
-        
-        //begin async mining on one Task, retrievie cancellation token
-        var miningCancellationToken1 = AsyncTasks.mineBlocksAsync();
-        
-        //begin async mining on another Task, retrievie cancellation token
-        var miningCancellationToken2 = AsyncTasks.mineBlocksAsync();
-        
-        //sleep this thread to allow some async mining, then cancel both tasks with the global mining
-        //lock. Retrieve immediate chain length. The two competing mining threads should respect the global mining lock
-        //and not override one another, or this thread
-        while (ArakCoin.Global.masterChain.getLength() == 0)
-            Utilities.sleep(100);
-        int chainLength;
-        lock (ArakCoin.Global.asyncMiningLock)
-        {
-            //cancel both Tasks atomically (since these two tasks & this thread all respect the same lock)
-            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken1);
-            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken2);
-            
-            chainLength = ArakCoin.Global.masterChain.getLength();
-        }
-
-        //sleep this thread for 1 whole second, no mining should have taken place due to the cancellation
-        Utilities.sleep(1000);
-        Assert.IsTrue(ArakCoin.Global.masterChain.getLength() == chainLength);
-        
-        //repeat the above test, but this time leave one Task mining - async mining should continue
-        ArakCoin.Global.masterChain = new Blockchain();
-        miningCancellationToken1 = AsyncTasks.mineBlocksAsync();
-        miningCancellationToken2 = AsyncTasks.mineBlocksAsync();
-        while (ArakCoin.Global.masterChain.getLength() == 0)
-            Utilities.sleep(100);
-        lock (ArakCoin.Global.asyncMiningLock)
-        {
-            //this time cancel only one task
-            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken1);
-            chainLength = ArakCoin.Global.masterChain.getLength();
-        }
-        //we should be able to wait for a block mine from the other task
-        while (ArakCoin.Global.masterChain.getLength() == chainLength)
-            Utilities.sleep(100);
-
-        Assert.IsFalse(ArakCoin.Global.masterChain.getLength() == chainLength);
-        //cleanup remaining task
-        AsyncTasks.cancelMineBlocksAsync(miningCancellationToken2);
-    }
-    
-    //todo - test client/server mining and sending each other same chain,and different chains. Test both converge
-    //to the consensus chain (do this on distributed nodes in functional testing)
 
     [Test]
     public async Task Temp()

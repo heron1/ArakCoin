@@ -224,12 +224,12 @@ public class ManualTests
 		//validated winning chain is stored as the local consensus chain
 		var winningChain = Blockchain.establishWinningChain(candidateChains);
 		if (winningChain is not null)
-			ArakCoin.Global.masterChain = winningChain;
+			ArakCoin.Globals.masterChain = winningChain;
 		
 		
 		//SIMULATION BEGINS (end of setup)
 		//begin mining as a new Task in the background
-		ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync();
+		ArakCoin.Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
 		
 		//initialize the RNG
 		int seed = Utilities.getTrulyRandomNumber();
@@ -247,9 +247,9 @@ public class ManualTests
 			{
 				int sleepTime = random.Next(0, 10000);
 				LogTestMsg($"sleeping {sleepTime}ms..");
-				ArakCoin.Global.miningCancelToken.Cancel(); //cancel local block mining
+				ArakCoin.Globals.miningCancelToken.Cancel(); //cancel local block mining
 				Utilities.sleep(sleepTime);
-				ArakCoin.Global.miningCancelToken = AsyncTasks.mineBlocksAsync(); //resume local block mining
+				ArakCoin.Globals.miningCancelToken = AsyncTasks.mineBlocksAsync(); //resume local block mining
 			}
 			else
 			{
@@ -279,7 +279,7 @@ public class ManualTests
 			
 			//now sleep a bit to let the background threads do their work
 			Utilities.sleep(random.Next(0, 1000));
-			if (ArakCoin.Global.masterChain.isBlockchainValid())
+			if (ArakCoin.Globals.masterChain.isBlockchainValid())
 			{
 				Utilities.log("Blockchain validated..");
 			}

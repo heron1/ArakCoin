@@ -45,7 +45,7 @@ public static class NetworkingManager
         NetworkingManager.updateHostsFileFromKnownNodes(); //store all known nodes from the network in the hosts file
 
         List<Blockchain> candidateChains = new List<Blockchain>();
-        candidateChains.Add(Global.masterChain); //the local chain is always added first, to win any tiebreakers
+        candidateChains.Add(Globals.masterChain); //the local chain is always added first, to win any tiebreakers
             
         //now add every local chain that exists at every known node to the candidate chains
         foreach (var node in HostsManager.getNodes())
@@ -59,7 +59,7 @@ public static class NetworkingManager
         //If null is returned, do nothing (keep the local chain)
         var winningChain = Blockchain.establishWinningChain(candidateChains);
         if (winningChain is not null)
-            Global.masterChain.replaceBlockchain(winningChain);
+            Globals.masterChain.replaceBlockchain(winningChain);
     } 
 
     /**

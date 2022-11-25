@@ -81,6 +81,41 @@ public class Transaction
 
 		return txIns;
 	}
+
+	/**
+	 * Checks all the transactions in the given array of transactions for a duplicate txIn
+	 */
+	public static bool doesTxArrayContainDuplicateTxIn(Transaction[] transactions)
+	{
+		var txins = Transaction.getTxInsFromTransactionContainer(transactions);
+		for (int i = 0; i < txins.Count; i++)
+		{
+			for (int j = i + 1; j < txins.Count; j++)
+			{
+				if (txins[i].txOutId == txins[j].txOutId && txins[i].txOutIndex == txins[j].txOutIndex)
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks whether there is a duplicate unspent transaction output in the input utxOut array
+	 */
+	public static bool doesUTxOutArrayContainDuplicateUTxOut(UTxOut[] utxOuts)
+	{
+		for (int i = 0; i < utxOuts.Length; i++)
+		{
+			for (int j = i + 1; j < utxOuts.Length; j++)
+			{
+				if (utxOuts[i].txOutId == utxOuts[j].txOutId && utxOuts[i].txOutIndex == utxOuts[j].txOutIndex)
+					return true;
+			}
+		}
+
+		return false;
+	}
 	
 	//check whether the input transaction is the coinbase transaction
 	//for the given block, and meets protocol requirements. Returns true if valid, otherwise false
@@ -138,7 +173,7 @@ public class Transaction
 		//ensure there is both at least 1 txIn and 1 txOut
 		if (tx.txIns.Length == 0 || tx.txOuts.Length == 0)
 			return false;
-
+		
 		//validate txIns and txOuts
 		long totalTxInAmounts = 0;
 		foreach (var txIn in tx.txIns)
@@ -207,15 +242,15 @@ public class Transaction
     public static bool doesTransactionMeetMemPoolAddRequirements(Transaction tx, 
 	    List<Transaction> txPool, UTxOut[] uTxOuts, bool ignorePoolSize = false)
     {
-	    //first make sure the mempool isn't full as specified in the node's settings
+	    //first make sure the mempool isn't full as specified in the node's settings (local node requirement)
 	    if (!ignorePoolSize && txPool.Count >= Settings.maxMempoolSize)
 		    return false;
 	    
-	    //next assert tx is valid within the context of the pool
+	    //next assert tx is valid within the context of the pool (protocol requirement)
 	    if (!isValidTransactionWithinPool(tx, txPool, uTxOuts))
 			return false;
 
-	    //lastly assert the miner fee meets threshold requirements for this node
+	    //lastly assert the miner fee meets threshold requirements for this node (local node requirement)
 	    return getMinerFeeFromTransaction(tx) >= Settings.minMinerFee;
     }
 
@@ -264,7 +299,7 @@ public class Transaction
         
         return updatedUTxOuts.ToArray();
     }
-
+    
     /**
     * Examines the TxOuts in the Transaction where the receiving address is the protocol
     * fee address. The miner may claim these coins for themselves as the transaction reward, as part
@@ -289,7 +324,7 @@ public class Transaction
 
     /**
      * Attempts to retrieve the public key from the input mined block. The caller is assumed to provide a correctly
-     * mined block otherwise an exception may be thrown.
+     * mined block that contains a valid public key for the miner otherwise an exception may be thrown.
      */
     public static string getMinerPublicKeyFromBlock(Block block)
     {

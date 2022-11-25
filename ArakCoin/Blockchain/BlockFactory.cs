@@ -6,14 +6,17 @@ public static class BlockFactory
 {
 	public static Block createNewBlock(Blockchain blockchain, Transaction[]? transactions = null)
 	{
-		if (blockchain.getLength() == 0)
-			return Blockchain.createGenesisBlock();
+		lock (blockchain.blockChainLock)
+		{
+			if (blockchain.getLength() == 0)
+				return Blockchain.createGenesisBlock();
 
-		if (transactions is null)
-			transactions = new Transaction[] {};
+			if (transactions is null)
+				transactions = new Transaction[] {};
 
-		return new Block(blockchain.getLength() + 1, transactions.ToArray(), Utilities.getTimestamp(),
-			blockchain.getLastBlock().calculateBlockHash(), blockchain.currentDifficulty, 1);
+			return new Block(blockchain.getLength() + 1, transactions.ToArray(), Utilities.getTimestamp(),
+				blockchain.getLastBlock().calculateBlockHash(), blockchain.currentDifficulty, 1);
+		}
 	}
 
 	public static Block createAndMineNewBlock(Blockchain blockchain, Transaction[]? transactions = null)

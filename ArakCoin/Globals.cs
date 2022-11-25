@@ -3,7 +3,7 @@
 /**
  * All globally accessible objects should be available here
  */
-public static class Global
+public static class Globals
 {
     //the main blockchain located at this node
     public static Blockchain masterChain = new Blockchain(); 

@@ -124,7 +124,7 @@ public class NodeListenerServer : IDisposable
                 return new NetworkMessage(MessageTypeEnum.ECHO, networkMessage.rawMessage);
             
             case MessageTypeEnum.GETCHAIN:
-                var serializedBlockchain = Serialize.serializeBlockchainToJson(Global.masterChain);
+                var serializedBlockchain = Serialize.serializeBlockchainToJson(Globals.masterChain);
                 if (serializedBlockchain is null)
                     return createErrorNetworkMessage("Error retrieving local blockchain");
                 return new NetworkMessage(MessageTypeEnum.GETCHAIN, serializedBlockchain);
@@ -133,7 +133,7 @@ public class NodeListenerServer : IDisposable
                 int blockIndex;
                 if (!Int32.TryParse(networkMessage.rawMessage, out blockIndex))
                     return createErrorNetworkMessage("Invalid message content for block index");
-                Block? requestedBlock = Global.masterChain.getBlockByIndex(blockIndex);
+                Block? requestedBlock = Globals.masterChain.getBlockByIndex(blockIndex);
                 if (requestedBlock is null)
                     return createErrorNetworkMessage($"Block with index {blockIndex} does not " +
                                                      $"exist in local blockchain");
@@ -148,7 +148,7 @@ public class NodeListenerServer : IDisposable
                 {
                     return createErrorNetworkMessage($"Invalid block received");
                 }
-                if (Global.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
+                if (Globals.masterChain.addValidBlock(candidateNextBlock)) //block successfully added
                 {
                     //ensure this program is aware of the blockchain update due to external source
                     GlobalHandler.handleExternalBlockchainUpdate(networkMessage.sendingNode); 
@@ -156,20 +156,20 @@ public class NodeListenerServer : IDisposable
                     //return success message
                     return new NetworkMessage(MessageTypeEnum.NEXTBLOCK, "");
                 }
-                if (candidateNextBlock.index > Global.masterChain.getLength() + 1) 
+                if (candidateNextBlock.index > Globals.masterChain.getLength() + 1) 
                     //Received block is a candidate ahead block. Execute new background task to handle whether
                     //another blockchain can be found to replace this one
                 {
                     Task.Run(() => handleAheadCandidateNextBlock(networkMessage));
                     return new NetworkMessage(MessageTypeEnum.INFO,
-                        $"This chain's last block has an index of {Global.masterChain.getLength()} but the" +
+                        $"This chain's last block has an index of {Globals.masterChain.getLength()} but the" +
                         $"received block has a higher index of {candidateNextBlock.index}. Node will check for a " +
                         $"potential replacement chain");
                 }
                 return createErrorNetworkMessage($"Invalid next block received");
             
             case MessageTypeEnum.GETMEMPOOL:
-                var serializedMempool = Serialize.serializeMempoolToJson(Global.masterChain.mempool);
+                var serializedMempool = Serialize.serializeMempoolToJson(Globals.masterChain.mempool);
                 if (serializedMempool is null)
                     return createErrorNetworkMessage("Error retrieving local mempool");
                 return new NetworkMessage(MessageTypeEnum.GETMEMPOOL, serializedMempool);
@@ -190,7 +190,7 @@ public class NodeListenerServer : IDisposable
                 //are paying a lower fee (and that are also the lowest priority) if the local mempool is full
                 foreach (var candidateTx in candidateMempool)
                 {
-                    Global.masterChain.addTransactionToMempoolGivenNodeRequirements(candidateTx);
+                    Globals.masterChain.addTransactionToMempoolGivenNodeRequirements(candidateTx);
                 }
                 
                 //regardless of the above outcome, we return a GETNODE acknowledgement enum with no message
@@ -258,15 +258,15 @@ public class NodeListenerServer : IDisposable
             return;
         Blockchain? winningChain = Blockchain.establishWinningChain(new List<Blockchain>(2)
         {
-            Global.masterChain,
+            Globals.masterChain,
             candidateReplacementChain
         });
         if (winningChain is null)
             return;
-        if (Global.masterChain != winningChain)
+        if (Globals.masterChain != winningChain)
         {
             //the retrieved chain is in fact ahead of our own local chain. We should now replace our chain with it
-            Global.masterChain.replaceBlockchain(candidateReplacementChain);
+            Globals.masterChain.replaceBlockchain(candidateReplacementChain);
             
             //local state should be updated
             GlobalHandler.handleExternalBlockchainUpdate(networkMessage.sendingNode);

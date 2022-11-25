@@ -12,21 +12,32 @@ public static class TransactionFactory
     }
     
     /**
+     * This function is the recommended way to create new transactions for a blockchain
+     * 
      * Attempts to create a new transaction with the given txOuts, signing them with the given privateKey and
      * then adding the transaction to the given blockchain's mempool. Returns the tx on succes, otherwise null
      */
     public static Transaction? createNewTransactionForBlockchain(TxOut[] txOuts, string privateKey,
         Blockchain bchain, long minerFee = 0, bool addToMemPool = true)
     {
-        Transaction? tx = createTransaction(txOuts, privateKey, bchain.uTxOuts, 
-            bchain.mempool, minerFee, addToMemPool);
-        return tx;
+        lock (bchain.blockChainLock)
+        {
+            Transaction? tx = createTransaction(txOuts, privateKey, bchain.uTxOuts, 
+                bchain.mempool, minerFee, addToMemPool);
+            return tx;
+        }
     }
     
-    //Attempt to create transaction given some txouts. If fails, returns null. Note: This will mutate the
-    //input mempool to include the new transaction if successful by default, however
-    //only if the transaction can be legally added to the mempool, otherwise null is returned.
-    //Set addToMemPool to false to simply create a transaction only and return it without any mutation
+    /**
+     * WARNING: Use the *createNewTransactionForBlockchain* for creating new transactions for a blockchain - this will
+     * ensure a lock exists to protect against mutating containers from other threads. This method does not do that.
+     * This method here should only be used directly in a synchronous environment if not acquiring a blockchain lock.
+     * 
+     * Attempt to create transaction given some txouts. If fails, returns null. Note: This will mutate the
+     * input mempool to include the new transaction if successful by default, however
+     * only if the transaction can be legally added to the mempool, otherwise null is returned.
+     * Set addToMemPool to false to simply create a transaction only and return it without any mutation
+     */
     public static Transaction? createTransaction(TxOut[] txOuts, string privateKey,
         UTxOut[] uTxOuts, List<Transaction> mempool, 
         long minerFee = 0, bool addToMemPool = true)
