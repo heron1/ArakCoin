@@ -21,5 +21,11 @@ public enum MessageTypeEnum
     GETNODES, //client request to retrieve this node's hostsfile (list of P2P nodes). Client message content is ignored
     REGISTERNODE, //client request for the receiver to add the included sendingNode in the sent NetworkMessage to the
                   //receivers hosts file. Client message content is ignored
+    GETUTXOUTS, //client requests the latest utxouts for the blockchain so they can create and sign a transaction.
+                //This is what will enable true clients to create transactions without needing a local copy of the
+                //blockchain
+    GETBALANCE, //client requests the balance for the given address in its message content. Node responds with a
+                //serialized integer that represents the balance, which will be 0 if none is found, or the address
+                //is invalid
     
 }

@@ -114,6 +114,30 @@ public static class Serialize
         }
     }
     
+    public static string? serializeContainerToJson<T>(IEnumerable<T> container)
+    {
+        try
+        {
+            return JsonConvert.SerializeObject(container);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    public static T? deserializeJsonToContainer<T>(string jsonContainer) where T : class
+    {
+        try
+        {
+            return JsonConvert.DeserializeObject<T>(jsonContainer);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
     public static string? serializeHostToJson(Host host)
     {
         return serializeHostsToJson(new List<Host>(1) { host });

@@ -28,7 +28,7 @@ namespace ManualTests
             //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
             //as desired. ALTERNATIVELY: This project could be executed with different command line arguments indicating
             //the desired test, along with any arguments for the test (where applicable).
-            TestSimulatedNetworkInteraction().Wait();
+            TestBasicNetworkInteraction().Wait();
 
         }
         
@@ -101,8 +101,11 @@ namespace ManualTests
          * as intended - this is a manual observation test
          */
         public static async Task TestBasicNetworkInteraction()
-        {
-            Console.WriteLine("Attempting to establishing consensus chain from network..");
+        {   
+            //load any local chain we have stored as a candidate for the network consensus chain
+            Blockchain.loadMasterChainFromDisk();
+            
+            Console.WriteLine("Attempting to establish consensus chain from network..");
             NetworkingManager.synchronizeConsensusChainFromNetwork();
             Console.WriteLine($"Local chain set with length {Globals.masterChain.getLength()} " +
                               $"and accumulative hashpower of" +
@@ -115,13 +118,17 @@ namespace ManualTests
             Console.ReadLine();
             Console.WriteLine("Continuing..");
             
-            //SIMULATION BEGINS (end of setup)
+            //subscribe to the block update event
+            GlobalHandler.latestBlockUpdateEvent += testBlockHandler;
             
             //begin mining as a new Task in the background
             Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
             
             //begin node discovery & registration as a new Task in the background
             Globals.nodeDiscoveryCancelToken = AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+            
+            //begin periodic mempool broadcasting as a new Task in the background
+            Globals.mempoolCancelToken = AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
             
             while (true)
             {
@@ -147,7 +154,7 @@ namespace ManualTests
             //load any local chain we have stored as a candidate for the network consensus chain
             Blockchain.loadMasterChainFromDisk();
             
-            Console.WriteLine("Attempting to establishing consensus chain from network..");
+            Console.WriteLine("Attempting to establish consensus chain from network..");
             NetworkingManager.synchronizeConsensusChainFromNetwork();
             Console.WriteLine($"Local chain set with length {Globals.masterChain.getLength()} " +
                               $"and accumulative hashpower of" +

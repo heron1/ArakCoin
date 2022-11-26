@@ -119,6 +119,15 @@ public class Settings
 	 */
 	[JsonProperty]
 	public static bool isNode = true;
+
+	/**
+	 * Specify whether this host will attempt to mine the next block in the background and broadcast it. Note that
+	 * if the isNode property is set to false and this is true, then there is no guarantee that the block being mined
+	 * is still valid for the consensus chain, as the host won't be participating in node P2P block sharing. Note it
+	 * usually only makes sense for a host to be a node and not a miner to be able to immediately verify transactions
+	 * as valid, otherwise both properties are recommended to be set to true or false.
+	 */
+	public static bool isMiner = true;
 	
 	/**
 	 * The ipv4 address of this host for network communication.

@@ -220,6 +220,18 @@ public class NodeListenerServer : IDisposable
                     rawMsg = $"Node add failed (might already exist in local hostsfile):" +
                              $" {networkMessage.sendingNode.ToString()}";
                 return new NetworkMessage(MessageTypeEnum.REGISTERNODE, rawMsg);
+            
+            case MessageTypeEnum.GETUTXOUTS:
+                var serializedUtxOuts = Serialize.serializeContainerToJson(Globals.masterChain.uTxOuts);
+                if (serializedUtxOuts is null)
+                    return createErrorNetworkMessage("Error locally serializing utxouts");
+                return new NetworkMessage(MessageTypeEnum.GETUTXOUTS, serializedUtxOuts);
+            
+            case MessageTypeEnum.GETBALANCE:
+                string address = networkMessage.rawMessage;
+                long balance = Wallet.getAddressBalance(address);
+                return new NetworkMessage(MessageTypeEnum.GETBALANCE, balance.ToString());
+            
             default:
                 return createErrorNetworkMessage();
         }

@@ -315,7 +315,6 @@ public class Transaction
 		    if (txOut.address == Protocol.FEE_ADDRESS)
 		    {
 			    minerCoins += txOut.amount;
-			    break;
 		    }
 	    }
 
