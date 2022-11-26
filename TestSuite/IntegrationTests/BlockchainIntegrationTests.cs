@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
+using System.Threading.Tasks;
 using ArakCoin;
 using ArakCoin.Transactions;
 

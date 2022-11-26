@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoin", "ArakCoin\ArakCoin.csproj", "{2AB11A85-7B18-4DCD-B0A2-DF73D3693985}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinClient", "ArakCoinClient\ArakCoinClient.csproj", "{43C84727-049E-4477-AC76-CEC26BB99084}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinCLI", "ArakCoinCLI\ArakCoinCLI.csproj", "{FEEFDE10-44DC-454C-B702-BF6688A81C87}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSuite", "TestSuite\TestSuite.csproj", "{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}"
@@ -20,10 +18,6 @@ Global
 		{2AB11A85-7B18-4DCD-B0A2-DF73D3693985}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2AB11A85-7B18-4DCD-B0A2-DF73D3693985}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2AB11A85-7B18-4DCD-B0A2-DF73D3693985}.Release|Any CPU.Build.0 = Release|Any CPU
-		{43C84727-049E-4477-AC76-CEC26BB99084}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{43C84727-049E-4477-AC76-CEC26BB99084}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{43C84727-049E-4477-AC76-CEC26BB99084}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{43C84727-049E-4477-AC76-CEC26BB99084}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FEEFDE10-44DC-454C-B702-BF6688A81C87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FEEFDE10-44DC-454C-B702-BF6688A81C87}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FEEFDE10-44DC-454C-B702-BF6688A81C87}.Release|Any CPU.ActiveCfg = Release|Any CPU

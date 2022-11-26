@@ -1,4 +1,5 @@
 ﻿global using static TestSuite.Global;
+using System;
 
 namespace TestSuite;
 
