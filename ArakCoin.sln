@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoin", "ArakCoin\ArakCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinClient", "ArakCoinClient\ArakCoinClient.csproj", "{43C84727-049E-4477-AC76-CEC26BB99084}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinNode", "ArakCoinNode\ArakCoinNode.csproj", "{FEEFDE10-44DC-454C-B702-BF6688A81C87}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArakCoinCLI", "ArakCoinCLI\ArakCoinCLI.csproj", "{FEEFDE10-44DC-454C-B702-BF6688A81C87}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestSuite", "TestSuite\TestSuite.csproj", "{920DAB97-7C0A-45EF-A1D4-D9D9CE8FBB27}"
 EndProject

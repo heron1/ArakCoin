@@ -19,7 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\ArakCoinClient\ArakCoinClient.csproj" />
-      <ProjectReference Include="..\ArakCoinNode\ArakCoinNode.csproj" />
+      <ProjectReference Include="..\ArakCoinCLI\ArakCoinCLI.csproj" />
       <ProjectReference Include="..\ArakCoin\ArakCoin.csproj" />
     </ItemGroup>
 

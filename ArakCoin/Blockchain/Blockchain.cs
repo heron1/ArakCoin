@@ -302,9 +302,6 @@ public class Blockchain
 			return false;
 		if (!validateNextBlockData(block))
 			return false;
-		//temp test below - this shouldn't be necessary, but why is validation sometimes failing without it?
-		if (Wallet.getCurrentCirculatingCoinSupply(this) != (this.getLength() - 1) * Protocol.BLOCK_REWARD)
-			return false;
 		
 		return true;
 	}

@@ -1,7 +1,6 @@
-﻿using System.Net;
-using System.Net.Sockets;
+﻿using ArakCoin;
 
-namespace ArakCoin
+namespace ArakCoinCLI
 {
 	internal class Program
 	{
@@ -9,10 +8,5 @@ namespace ArakCoin
 		{
 			
 		}
-
-		
 	}
-	
-	
-
 }

@@ -59,6 +59,9 @@ public static class AsyncTasks
      */
     public static void cancelMineBlocksAsync(CancellationTokenSource cancelTokenSource)
     {
+        //we acquire a lock here not because the .Cancel() method isn't atomic, but because we should wait for
+        //an async mining thread to release its lock (indicating it's done for that block mine) before cancelling.
+        //This guarantees that after we call this method, no further mining takes place (no race condition)
         lock (Globals.asyncMiningLock)
         {
             cancelTokenSource.Cancel();
