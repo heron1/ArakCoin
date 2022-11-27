@@ -6,8 +6,9 @@ using System.Text;
 
 namespace ArakCoin;
 
-public class Utilities
+public static class Utilities
 {
+	
 	/**
 	 * Given any string, will convert it to another string representing its hexadecimal sha256 hash
 	 */
@@ -85,18 +86,24 @@ public class Utilities
 	 */
 	public static void log(string logMsg)
 	{
+		StringQueue.addToQueue(logMsg);
 		if (Settings.displayLogMessages)
 		{
-			// Console.WriteLine($"Log message: {logMsg}");
-			// Debug.WriteLine($"Log message: {logMsg}");
-			Console.Error.WriteLine($"Log message: {logMsg}");
+			Console.WriteLine(logMsg);
 		}
+		// if (Settings.displayLogMessages)
+		// {
+		// 	
+		// 	Console.WriteLine($"Log message: {logMsg}");
+		// 	// Debug.WriteLine($"Log message: {logMsg}");
+		// 	// Console.Error.WriteLine($"Log message: {logMsg}");
+		// }
 	}
 
 	/**
 	 * If we encounter an invalid program state, we will call this function to
 	 * log a message and alert the client/node of what's occurred. We may also optionally throw an exception
-	 * depending upon the value of terminateProgramOnExceptionLog in Setting.cs
+	 * depending upon the value of terminateProgramOnExceptionLog in setting.json
 	 * This implementation may change over time, but the same function can still be called.
 	 */
 	public static void exceptionLog(string exceptionLog)

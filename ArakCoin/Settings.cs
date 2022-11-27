@@ -125,8 +125,9 @@ public class Settings
 	 * if the isNode property is set to false and this is true, then there is no guarantee that the block being mined
 	 * is still valid for the consensus chain, as the host won't be participating in node P2P block sharing. Note it
 	 * usually only makes sense for a host to be a node and not a miner to be able to immediately verify transactions
-	 * as valid, otherwise both properties are recommended to be set to true or false.
+	 * as valid for receiving payments, otherwise both properties are recommended to be set to true or false.
 	 */
+	[JsonProperty]
 	public static bool isMiner = true;
 	
 	/**
@@ -161,7 +162,8 @@ public class Settings
 	public static int minMinerFee = 0;
 
 	/**
-	 * Limits the size of the mempool. Received transactions will be rejected if the mempool is full
+	 * Limits the size of the mempool.
+	 * If the mempool is full, a received transaction will only override the lowest priority one if its fee is higher
 	 */
 	[JsonProperty] public static int maxMempoolSize = 25;
 

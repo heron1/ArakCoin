@@ -125,6 +125,7 @@ public static class HostsManager
         //the caller doesn't encounter a changing list
         lock (hostsLock)
         {
+            loadNodes(); //reload nodes from disk
             return nodes.ToList();
         }
     }

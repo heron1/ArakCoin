@@ -1,4 +1,6 @@
-﻿namespace ArakCoin;
+﻿using ArakCoin.Networking;
+
+namespace ArakCoin;
 
 /**
  * All globally accessible objects should be available here
@@ -10,6 +12,9 @@ public static class Globals
     
     //lock to synchronize mining between threads
     public static readonly object asyncMiningLock = new object(); 
+    
+    //the global node listening server
+    public static NodeListenerServer nodeListener = new NodeListenerServer();
     
     //global async mining cancellation token
     public static CancellationTokenSource miningCancelToken = new CancellationTokenSource(); 

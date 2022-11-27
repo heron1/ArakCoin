@@ -15,6 +15,38 @@ namespace ArakCoinCLI
 		
 		static void Main(string[] args)
 		{
+			//subscribe to the block update event
+			GlobalHandler.latestBlockUpdateEvent += blockUpdateHandler;
+			
+			//load node services if applicable
+			if (Settings.isNode)
+			{
+				//load local masterchain and retrieve consensus chain from network
+				Blockchain.loadMasterChainFromDisk();
+				cliLog("Attempting to establish consensus chain from network..");
+				NetworkingManager.synchronizeConsensusChainFromNetwork();
+				cliLog($"Local chain set with length {ArakCoin.Globals.masterChain.getLength()} " +
+				       $"and accumulative hashpower of" +
+				       $" {ArakCoin.Globals.masterChain.calculateAccumulativeChainDifficulty()}");
+				
+				//begin the node listening server
+				ArakCoin.Globals.nodeListener.startListeningServer();
+				
+				//begin node discovery & registration as a new Task in the background
+				ArakCoin.Globals.nodeDiscoveryCancelToken = 
+					AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+				
+				//begin periodic mempool broadcasting as a new Task in the background
+				ArakCoin.Globals.mempoolCancelToken = 
+					AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
+			}
+
+			if (Settings.isMiner)
+			{
+				//begin mining as a new Task in the background
+				ArakCoin.Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
+			}
+			
 			//don't display log messages on main UI
 			Settings.displayLogMessages = false;
 			
@@ -32,11 +64,19 @@ namespace ArakCoinCLI
 			}
 		}
 
+		/**
+		 * Event handler for block updates
+		 */
+		static void blockUpdateHandler(object? o, Block nextBlock)
+		{
+			
+		}
+
 		static void UILoop()
 		{
 			cliLog("\nSTATUS: ");
-			cliLog($"\tNode Server: Offline");
-			cliLog($"\tBackground Mining: Offline");
+			cliLog($"\tNode Services: {(Settings.isNode ? "Online" : "offline")}");
+			cliLog($"\tBackground Mining: {(Settings.isMiner ? "Online" : "offline")}");
 			cliLog($"\tLocal wallet balance: {lastBalance}");
 			cliLog($"\tNetwork chain height: {chainHeight}");
 
@@ -115,7 +155,9 @@ namespace ArakCoinCLI
 				case "3":
 					handleGetBlock();
 					break;
-				
+				case "4":
+					handleLiveLog();
+					break;
 			}
 		}
 
@@ -161,23 +203,34 @@ namespace ArakCoinCLI
 				return;
 			
 			//create network message request
-			var nm = new NetworkMessage(MessageTypeEnum.GETUTXOUTS, "");
-			cliLog("\tretrieving latest utxout list from network..");
 			UTxOut[]? receivedUtxOuts = null;
 			Host? receivedNode = null;
-			foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
-			{
-				var respMsg = Communication.communicateWithNode(nm, node).Result;
-				if (respMsg is null)
-					continue;
-				
-				UTxOut[]? utxouts = Serialize.deserializeJsonToContainer<UTxOut[]>(respMsg.rawMessage);
-				if (utxouts is null)
-					continue;
 
-				receivedUtxOuts = utxouts;
-				receivedNode = node;
-				break; //utxouts received from a node
+			//if we are a node, we can just retrieve the utxouts from the local chain, otherwise we must request
+			//the utxouts from the network
+			if (Settings.isNode)
+			{
+				receivedNode = new Host(Settings.nodeIp, Settings.nodePort);
+				receivedUtxOuts = ArakCoin.Globals.masterChain.uTxOuts;
+			}
+			else
+			{
+				var nm = new NetworkMessage(MessageTypeEnum.GETUTXOUTS, "");
+				cliLog("\tretrieving latest utxout list from network..");
+				foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+				{
+					var respMsg = Communication.communicateWithNode(nm, node).Result;
+					if (respMsg is null)
+						continue;
+				
+					UTxOut[]? utxouts = Serialize.deserializeJsonToContainer<UTxOut[]>(respMsg.rawMessage);
+					if (utxouts is null)
+						continue;
+
+					receivedUtxOuts = utxouts;
+					receivedNode = node;
+					break; //utxouts received from a node
+				}
 			}
 
 			if (receivedNode is null || receivedUtxOuts is null)
@@ -277,6 +330,23 @@ namespace ArakCoinCLI
 				}
 				cliLog(""); //newline
 			}
+		}
+
+		static void handleLiveLog()
+		{
+			//retrive and write buffered strings to output
+			var strList = StringQueue.retrieveOrderedQueue();
+			foreach (var s in strList)
+				cliLog(s);
+
+			//display new messages to console
+			Settings.displayLogMessages = true;
+			
+			//wait for user to press enter to exit
+			Console.ReadLine(); 
+			
+			//turn off displaying new messages to console
+			Settings.displayLogMessages = false;
 		}
 
 		/**

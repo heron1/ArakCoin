@@ -5,6 +5,9 @@
  */
 public static class Storage
 {
+    public static string appDirectoryPath = Path.Combine(Environment.GetFolderPath
+        (Environment.SpecialFolder.ApplicationData), "ArakCoin");
+    
     //returns false if failure
     public static bool writeJsonToDisk(string data, string filename)
     {
@@ -54,12 +57,9 @@ public static class Storage
     //delete the given filename from disk
     public static bool deleteFile(string filename)
     {
-        string specialAppFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string appdataFolder = Path.Combine(specialAppFolder, "ArakCoin");
-
         try
         {
-            File.Delete(Path.Combine(appdataFolder, filename));
+            File.Delete(Path.Combine(appDirectoryPath, filename));
         }
         catch
         {
