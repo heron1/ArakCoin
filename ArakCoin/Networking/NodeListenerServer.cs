@@ -232,6 +232,10 @@ public class NodeListenerServer : IDisposable
                 long balance = Wallet.getAddressBalance(address);
                 return new NetworkMessage(MessageTypeEnum.GETBALANCE, balance.ToString());
             
+            case MessageTypeEnum.GETCHAINHEIGHT:
+                return new NetworkMessage(MessageTypeEnum.GETCHAINHEIGHT, 
+                    Globals.masterChain.getLength().ToString());
+            
             default:
                 return createErrorNetworkMessage();
         }

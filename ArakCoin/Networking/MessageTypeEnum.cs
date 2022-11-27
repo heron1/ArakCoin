@@ -27,5 +27,6 @@ public enum MessageTypeEnum
     GETBALANCE, //client requests the balance for the given address in its message content. Node responds with a
                 //serialized integer that represents the balance, which will be 0 if none is found, or the address
                 //is invalid
+    GETCHAINHEIGHT, //client requests the current height of the blockchain at this node
     
 }

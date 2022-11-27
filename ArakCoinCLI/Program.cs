@@ -11,14 +11,18 @@ namespace ArakCoinCLI
 	static internal class Program
 	{
 		private static long lastBalance; //last known address balance for this host
+		private static long chainHeight; //last known height of the network chain
 		
 		static void Main(string[] args)
 		{
 			//don't display log messages on main UI
 			Settings.displayLogMessages = false;
 			
+			//initialize local fields from network
+			updateLocalFieldsFromNetwork();
+			
 			//begin periodic address balance update task
-			Task.Run(addressBalanceUpdaterTask);
+			Task.Run(updateLocalFieldsFromNetworkTask);
 			
 			cliLog("\nWelcome to Arak Coin command line interface!\n" +
 			               "===============================================\n");
@@ -34,6 +38,7 @@ namespace ArakCoinCLI
 			cliLog($"\tNode Server: Offline");
 			cliLog($"\tBackground Mining: Offline");
 			cliLog($"\tLocal wallet balance: {lastBalance}");
+			cliLog($"\tNetwork chain height: {chainHeight}");
 
 			cliLog("\nPlease enter the number corresponding to your action (Enter to refresh):");
 			cliLog("\t1) Create & broadcast new transaction");
@@ -51,15 +56,24 @@ namespace ArakCoinCLI
 		}
 
 		/**
-		 * Update the local address balance periodically. The thread calling this won't ever exit this method
+		 * Update local fields from the network periodically (eg: local balance, etc). The thread calling this
+		 * won't ever exit this method
 		 */
-		static void addressBalanceUpdaterTask()
+		static void updateLocalFieldsFromNetworkTask()
 		{
 			while (true)
 			{
-				lastBalance = getAddressBalance(Settings.nodePublicKey);
+				updateLocalFieldsFromNetwork();
 				Utilities.sleep(10000);
 			}
+		}
+
+		static void updateLocalFieldsFromNetwork()
+		{
+			lastBalance = getAddressBalance(Settings.nodePublicKey);
+			var chainResp = getChainHeight();
+			if (chainResp != -1) //-1 indicates failure, so leave current chain height alone
+				chainHeight = chainResp;
 		}
 
 		static string getInput()
@@ -98,14 +112,15 @@ namespace ArakCoinCLI
 				case "2":
 					handleGetAddressBalance();
 					break;
+				case "3":
+					handleGetBlock();
+					break;
 				
 			}
 		}
 
 		static void handleCreationTransactionInput()
 		{
-			cliLog("Retrieving updated wallet balance..");
-			lastBalance = getAddressBalance(Settings.nodePublicKey);
 			cliLog($"\tYour wallet has: {lastBalance} coins");
 			cliLog($"\tWhat mining fee will you pay for this transaction?");
 			long minerFee = getIntInput();
@@ -188,7 +203,7 @@ namespace ArakCoinCLI
 			var broadcast = NetworkingManager.broadcastMempool(new List<Transaction>() { tx });
 			if (!broadcast)
 			{
-				cliLog("Local serialization of our transaction failed. It was *not* broadcast to the network..");
+				cliLog("\tLocal serialization of our transaction failed. It was *not* broadcast to the network..");
 				return;
 			}
 			cliLog($"\tTransaction has been broadcast to the network..");
@@ -199,7 +214,69 @@ namespace ArakCoinCLI
 			cliLog($"\tEnter address of balance to check: ");
 			var address = getInput();
 			var balance = getAddressBalance(address);
-			cliLog($"Address {address} has a balance of {balance} coins");
+			cliLog($"\tAddress {address} has a balance of {balance} coins");
+		}
+		
+		static void handleGetBlock()
+		{
+			cliLog($"\tEnter the block index to retrieve from the network " +
+			       $"(current chain height is {chainHeight})");
+			var blockIndex = getIntInput();
+			if (blockIndex == 0) //index begins at 1, 0 indicates exiting this method
+				return;
+			cliLog($"Attempting to retrieve block {blockIndex} from network..");
+
+			Block? retrievedBlock = null;
+			Host? receivedNode = null;
+			if (Settings.isNode) //retrieve block from the local chain if we're a node
+			{
+				retrievedBlock = ArakCoin.Globals.masterChain.getBlockByIndex(blockIndex);
+				receivedNode = new Host(Settings.nodeIp, Settings.nodePort);
+			}
+			else //else we must get it from the network
+			{
+				var nm = new NetworkMessage(MessageTypeEnum.GETBLOCK, blockIndex.ToString());
+				foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+				{
+					var respMsg = Communication.communicateWithNode(nm, node).Result;
+					if (respMsg is null)
+						continue;
+
+					//ensure received raw message can be deserialized into a valid block
+					Block? deserializedBlock = Serialize.deserializeJsonToBlock(respMsg.rawMessage);
+					if (deserializedBlock is null)
+						continue;
+					if (deserializedBlock.calculateBlockHash() is null)
+						continue;
+
+					retrievedBlock = deserializedBlock;
+					receivedNode = node;
+				}
+			}
+			if (retrievedBlock is null || receivedNode is null)
+			{
+				cliLog("\tError retrieving the given block from the network..");
+				return;
+			}
+
+			string minedByString = retrievedBlock.index == 1 ? ""
+				: $"\t\tMined by: {retrievedBlock.transactions[0].txOuts[0].address}\n";
+			cliLog($"\tBlock {retrievedBlock.index} successfully retrieved " +
+			       $"(difficulty {retrievedBlock.difficulty}):\n" +
+			       $"\t\tBlock hash: {retrievedBlock.calculateBlockHash()}\n" +
+			       $"{minedByString}" +
+			       $"\t\tNonce: {retrievedBlock.nonce}, Timestamp: {retrievedBlock.timestamp}\n" +
+			       $"\t\tPrevious block hash: {retrievedBlock.prevBlockHash}\n" +
+			       $"\t\tTransactions:");
+			foreach (var tx in retrievedBlock.transactions)
+			{
+				cliLog($"\t\t\tTx id: {tx.id}\n\t\t\t\tTx Outs:");
+				foreach (var txout in tx.txOuts)
+				{
+					cliLog($"\t\t\t\t\t{txout.address} received {txout.amount} coins");
+				}
+				cliLog(""); //newline
+			}
 		}
 
 		/**
@@ -238,6 +315,43 @@ namespace ArakCoinCLI
 			}
 
 			return receivedBalance;
+		}
+
+		/**
+		 * Get the chain height from the network. return of -1 indicates failure
+		 */
+		static long getChainHeight()
+		{
+			//retrieve chain height from the local chain if we're a node
+			if (Settings.isNode) 
+			{
+				return ArakCoin.Globals.masterChain.getLength();
+			}
+			
+			//otherwise we must get it from the network
+			var nm = new NetworkMessage(MessageTypeEnum.GETCHAINHEIGHT, "");
+			long receivedHeight = 0;
+			Host? receivedNode = null;
+			foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+			{
+				var respMsg = Communication.communicateWithNode(nm, node).Result;
+				if (respMsg is null)
+					continue;
+
+				//ensure received raw message is a valid integer
+				if (!Int64.TryParse(respMsg.rawMessage, out receivedHeight))
+					continue;
+				
+				receivedNode = node;
+			}
+			
+			if (receivedNode is null)
+			{
+				cliLog("Could not retrieve block height from network..\n");
+				return -1; //-1 indicates failure
+			}
+
+			return receivedHeight;
 		}
 	}
 }
