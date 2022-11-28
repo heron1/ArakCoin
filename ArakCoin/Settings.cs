@@ -17,17 +17,13 @@ namespace ArakCoin;
 public class Settings
 {
 	public static string jsonFilename = "settings.json";
-	
-	/**
-	 * This is a static constructor as this class only contains static members. We do not mark the class type as
-	 * static in order to allow serialization of the class
-	 */
-	static Settings()
-	{
-		loadSettingsFileAtRuntime();
-	}
 
-	public static void loadSettingsFileAtRuntime()
+	/**
+	 * Returns true if a settings file was loaded, false if a default settings file had to be created instead (with
+	 * the default values from Settings.cs). If no default settings file was able to be created, this method will
+	 * throw an unconditional exception
+	 */
+	public static bool loadSettingsFileAtRuntime()
 	{
 		//attempt to load settings file from the application folder and populate the settings values here at runtime
 		
@@ -38,7 +34,7 @@ public class Settings
 			//Exception thrown if this fails
 			generateNewSettingsFileOnDisk();
 			
-			return;
+			return false;
 		}
 
 		bool success = Serialize.deserializeJsonToSettings(jsonSettings); //deserialize it and put values in memory
@@ -48,11 +44,12 @@ public class Settings
 			Storage.writeJsonToDisk(jsonSettings, $"invalid_{jsonFilename}");
 			generateNewSettingsFileOnDisk(); //throws exception if generating new settings file fails
 			
-			return;
+			return false;
 		}
 		
 		//if none of the above conditionals were triggered, we should have successfully loaded the user settings here
 		Utilities.log($"Successfully loaded settings file {jsonFilename} from disk..");
+		return true;
 	}
 
 	/**

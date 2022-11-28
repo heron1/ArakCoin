@@ -46,6 +46,24 @@ public static class Cryptography
 	}
 
 	/**
+	 * Verify the input private and public keys are paired
+	 */
+	public static bool testKeypair(string publicKey, string privateKey)
+	{
+		//test data can be signed correctly
+		string data = "dataTest";
+		string? signature = Cryptography.signData(data, privateKey);
+		if (signature is null)
+			return false;
+
+		if (!Cryptography.verifySignedData(signature, data, publicKey))
+			return false;
+		
+		//test the public key can be derived from the private key
+		return (getPublicKeyFromPrivateKey(privateKey) == publicKey);
+	}
+
+	/**
 	 * Sign the input data with the given private key. Returns a string representing the signed data. If the operation fails,
 	 * will return null
 	 */

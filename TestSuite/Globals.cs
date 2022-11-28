@@ -1,9 +1,9 @@
-﻿global using static TestSuite.Global;
+﻿global using static TestSuite.Globals;
 using System;
 
 namespace TestSuite;
 
-public static class Global
+public static class Globals
 {
 	public static string testPublicKey = "e4d4f90ebdb65b2601a994445b6191c734edeaa5003a2b96747bbfe475dbf790";
 	public static string testPrivateKey = "42457c05923b617205e07e211289217cb28b494aee922ff968f226ed17e35d20";

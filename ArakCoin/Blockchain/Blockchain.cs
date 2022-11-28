@@ -340,9 +340,11 @@ public class Blockchain
 	{
 		lock (chain.blockChainLock)
 		{
+			bool originalMessageDisplay = Settings.displayLogMessages;
+
 			try
 			{
-				//disable logging for the validation
+				//disable logging for the validation if applicable
 				Settings.displayLogMessages = false;
 
 				LinkedListNode<Block>? blockNode = chain.blockchain.First;
@@ -391,8 +393,8 @@ public class Blockchain
 			}
 			finally
 			{
-				//re-enable log messages
-				Settings.displayLogMessages = true;
+				//re-enable log messages if applicable
+				Settings.displayLogMessages = originalMessageDisplay;
 			}
 		}
 	}

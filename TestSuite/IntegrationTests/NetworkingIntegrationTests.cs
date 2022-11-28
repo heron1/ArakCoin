@@ -287,8 +287,8 @@ public class NetworkingIntegrationTests
         //add a valid tx to the node's mempool
         var tx = TransactionFactory.createNewTransactionForBlockchain(new TxOut[]
         {
-            new TxOut(Global.testPublicKey, 10)
-        }, Global.testPrivateKey, ArakCoin.Globals.masterChain);
+            new TxOut(Globals.testPublicKey, 10)
+        }, Globals.testPrivateKey, ArakCoin.Globals.masterChain);
         //now retrieve the mempool from the node as a client, and assert its tx is the same one as the one created
         //in addition to asserting the mempool is valid
         sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETMEMPOOL, "");
