@@ -34,12 +34,12 @@ public static class StringQueue
             //first write from currIndex + 1 to maxSize if queue has already overlapped
             if (overlap) 
             {
-                for (int i = currIndex + 1; i < maxSize; i++)
+                for (int i = currIndex; i < maxSize; i++)
                     returnedQueue.Add(strQueue[i]);
             }
         
             //now write from 0th to current index
-            for (int i = 0; i <= currIndex; i++)
+            for (int i = 0; i < currIndex; i++)
             {
                 returnedQueue.Add(strQueue[i]);
             }

@@ -1,4 +1,5 @@
-﻿using ArakCoin.Networking;
+﻿using System.Text;
+using ArakCoin.Networking;
 using ArakCoin.Transactions;
 
 namespace ArakCoin;
@@ -30,16 +31,15 @@ public static class GlobalHandler
         Block lastBlock = Globals.masterChain.getLastBlock();
         if (!Blockchain.isGenesisBlock(lastBlock))
         {
-            Utilities.log(
-                $"The latest mined block #{lastBlock.index} with difficulty {lastBlock.difficulty} details -");
-            Utilities.log($"\tMined by: {Transaction.getMinerPublicKeyFromBlock(lastBlock)}");
-            Utilities.log($"\tBlock hash: {lastBlock.calculateBlockHash()}");
-            Utilities.log($"\tBlock transactions:");
-
+            var sb = new StringBuilder();
+            sb.Append($"The latest mined block #{lastBlock.index} with difficulty {lastBlock.difficulty} details -\n");
+            sb.Append($"\tMined by: {Transaction.getMinerPublicKeyFromBlock(lastBlock)}\n");
+            sb.Append($"\tBlock hash: {lastBlock.calculateBlockHash()}\n");
+            sb.Append($"\tBlock transactions:\n");
             foreach (var tx in lastBlock.transactions)
             {
-                Utilities.log($"\t\tTx id: {tx.id.Substring(0, 3)} " +
-                              $"(fee: {Transaction.getMinerFeeFromTransaction(tx)}). Confirmed TxOuts:");
+                sb.Append($"\t\tTx id: {tx.id.Substring(0, 3)} " +
+                          $"(fee: {Transaction.getMinerFeeFromTransaction(tx)}). Confirmed TxOuts:\n");
                 foreach (var txout in tx.txOuts)
                 {
                     string subaddr; //shrink the address logged
@@ -47,10 +47,10 @@ public static class GlobalHandler
                         subaddr = txout.address;
                     else
                         subaddr = txout.address.Substring(0, 3) + "..";
-                    Utilities.log($"\t\t\t{subaddr} received {txout.amount} coins");
-
+                    sb.Append($"\t\t\t{subaddr} received {txout.amount} coins\n");
                 }
             }
+            Utilities.log(sb.ToString());
         }
         
         //trigger a blockchain update event globally to any listeners (that might be listening for their own reasons)

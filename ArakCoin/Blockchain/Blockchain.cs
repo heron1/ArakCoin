@@ -338,51 +338,62 @@ public class Blockchain
 	 */
 	public static bool isBlockchainValid(Blockchain chain)
 	{
-		lock(chain.blockChainLock)
+		lock (chain.blockChainLock)
 		{
-			LinkedListNode<Block>? blockNode = chain.blockchain.First;
-
-			// empty chain must have a null first element
-			if (chain.getLength() == 0)
+			try
 			{
-				if (blockNode is not null)
+				//disable logging for the validation
+				Settings.displayLogMessages = false;
+
+				LinkedListNode<Block>? blockNode = chain.blockchain.First;
+
+				// empty chain must have a null first element
+				if (chain.getLength() == 0)
+				{
+					if (blockNode is not null)
+						return false;
+
+					return true;
+				}
+
+				//rebuild the chain, ensure each added block is permissible
+				Blockchain rebuildChain = new Blockchain();
+
+				while (blockNode is not null)
+				{
+					bool success = rebuildChain.addValidBlock(blockNode.Value);
+					if (!success)
+						return false;
+
+					blockNode = blockNode.Next;
+				}
+
+				//assert difficulty is correct
+				if (rebuildChain.currentDifficulty != chain.currentDifficulty)
+					return false;
+
+				//assert the uTxOuts in the rebuild chain are identical to input chain
+				if (rebuildChain.uTxOuts.Length != chain.uTxOuts.Length)
+					return false;
+				for (int i = 0; i < rebuildChain.uTxOuts.Length; i++)
+				{
+					if (rebuildChain.uTxOuts[i] != chain.uTxOuts[i])
+						return false;
+				}
+
+				//assert total circulating coin supply is valid
+				long expectedSupply = (rebuildChain.getLength() - 1) * Protocol.BLOCK_REWARD;
+				long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
+				if (expectedSupply != actualSupply)
 					return false;
 
 				return true;
 			}
-
-			//rebuild the chain, ensure each added block is permissible
-			Blockchain rebuildChain = new Blockchain();
-
-			while (blockNode is not null)
+			finally
 			{
-				bool success = rebuildChain.addValidBlock(blockNode.Value);
-				if (!success)
-					return false;
-
-				blockNode = blockNode.Next;
+				//re-enable log messages
+				Settings.displayLogMessages = true;
 			}
-
-			//assert difficulty is correct
-			if (rebuildChain.currentDifficulty != chain.currentDifficulty)
-				return false;
-
-			//assert the uTxOuts in the rebuild chain are identical to input chain
-			if (rebuildChain.uTxOuts.Length != chain.uTxOuts.Length)
-				return false;
-			for (int i = 0; i < rebuildChain.uTxOuts.Length; i++)
-			{
-				if (rebuildChain.uTxOuts[i] != chain.uTxOuts[i])
-					return false;
-			}
-
-			//assert total circulating coin supply is valid
-			long expectedSupply = (rebuildChain.getLength() - 1) * Protocol.BLOCK_REWARD;
-			long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
-			if (expectedSupply != actualSupply)
-				return false;
-
-			return true;
 		}
 	}
 	

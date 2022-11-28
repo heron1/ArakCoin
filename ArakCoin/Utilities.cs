@@ -91,13 +91,6 @@ public static class Utilities
 		{
 			Console.WriteLine(logMsg);
 		}
-		// if (Settings.displayLogMessages)
-		// {
-		// 	
-		// 	Console.WriteLine($"Log message: {logMsg}");
-		// 	// Debug.WriteLine($"Log message: {logMsg}");
-		// 	// Console.Error.WriteLine($"Log message: {logMsg}");
-		// }
 	}
 
 	/**
@@ -111,6 +104,7 @@ public static class Utilities
 		Console.WriteLine($"Exception log message: {exceptionLog}");
 		Debug.WriteLine($"Exception log message: {exceptionLog}");
 		Console.Error.WriteLine($"Exception log message: {exceptionLog}");
+		StringQueue.addToQueue("Exception log message: " + exceptionLog);
 
 		if (Settings.terminateProgramOnExceptionLog)
 			throw new Exception($"exceptionLog triggered and terminateProgramOnExceptionLog was set to true. " +

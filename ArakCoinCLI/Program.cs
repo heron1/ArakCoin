@@ -69,7 +69,10 @@ namespace ArakCoinCLI
 		 */
 		static void blockUpdateHandler(object? o, Block nextBlock)
 		{
-			
+			if (Settings.isNode)
+			{
+				updateLocalFieldsFromNetwork();
+			}
 		}
 
 		static void UILoop()
@@ -86,9 +89,10 @@ namespace ArakCoinCLI
 			cliLog("\t3) View specific block");
 			cliLog("\t4) View live log");
 			cliLog("\t5) Manually add a new node");
-			cliLog("\t6) Manually retrieve consensus chain from network");
+			cliLog("\t6) Manually blacklist a node");
 			cliLog("\t7) Display known nodes");
-			cliLog("\t8) Reset settings file");
+			cliLog("\t8) Manually retrieve consensus chain from network");
+			cliLog("\t9) Reset settings file");
 			cliLog("\t0) Exit..");
 
 			var input = getInput();
@@ -158,6 +162,19 @@ namespace ArakCoinCLI
 				case "4":
 					handleLiveLog();
 					break;
+				case "5":
+					handleAddNewNode();
+					break;
+				case "6":
+					handleBlacklistNode();
+					break;
+				case "7":
+					handleDisplayNodes();
+					break;
+				case "8":
+					handleRetrieveConsensusChain();
+					break;
+					
 			}
 		}
 
@@ -347,6 +364,112 @@ namespace ArakCoinCLI
 			
 			//turn off displaying new messages to console
 			Settings.displayLogMessages = false;
+		}
+
+		static void handleAddNewNode()
+		{
+			cliLog("Enter the ipv4 address of the node");
+			var ip = getInput();
+			if (ip == "0")
+				return;
+			cliLog("Enter the port number of the node");
+			var port = getIntInput();
+			if (port == 0)
+				return;
+			Host host;
+			try
+			{
+				host = new Host(ip, port);
+			}
+			catch (ArgumentException e)
+			{
+				cliLog($"Error creating the host: {e.Message}");
+				return;
+			}
+
+			if (!HostsManager.addNode(host))
+				cliLog($"The node {host} was *not* added. Does it already exist? Or is it blacklisted?");
+			else
+			{
+				cliLog($"Successfully added new node {host}");
+			}
+		}
+
+		static void handleBlacklistNode()
+		{
+			cliLog("Enter the ipv4 address of the node to blacklist");
+			var ip = getInput();
+			if (ip == "0")
+				return;
+			cliLog("Enter the port number of the node to blacklist");
+			var port = getIntInput();
+			if (port == 0)
+				return;
+			Host host;
+			try
+			{
+				host = new Host(ip, port);
+			}
+			catch (ArgumentException e)
+			{
+				cliLog($"Error creating the host for blacklist: {e.Message}");
+				return;
+			}
+			if (!HostsManager.addNodeToBlacklist(host))
+				cliLog($"The node {host} was *not* added to the blacklist. Is it already blacklisted?");
+			else
+			{
+				cliLog($"Successfully added new node {host} to the blacklist");
+			}
+		}
+
+		/**
+		 * Displayed nodes should display nodes both from the hosts file, and the blacklisted hosts file
+		 */
+		static void handleDisplayNodes()
+		{
+			cliLog("Currently known nodes: ");
+			foreach (var node in HostsManager.getNodes())
+			{
+				cliLog($"\t{node}");
+			}
+
+			cliLog("Blacklisted nodes: ");
+			var blacklistedNodes = HostsManager.getBlacklistedNodes();
+			if (blacklistedNodes is null)
+				return;
+			foreach (var node in blacklistedNodes)
+			{
+				cliLog($"\t{node}");
+			}
+		}
+
+		static void handleRetrieveConsensusChain()
+		{
+			string? originalLastBlockHash = ArakCoin.Globals.masterChain.getLastBlock()?.calculateBlockHash();
+			cliLog("Retrieving consensus chain from network..");
+			NetworkingManager.synchronizeConsensusChainFromNetwork();
+			string? newLastBlockHash = ArakCoin.Globals.masterChain.getLastBlock()?.calculateBlockHash();
+			if (originalLastBlockHash is not null && newLastBlockHash is not null)
+			{
+				if (originalLastBlockHash == newLastBlockHash)
+				{
+					cliLog("Network consensus chain is already the same as the local chain");
+					return;
+				}
+
+				cliLog($"Retrieved consensus chain of length {ArakCoin.Globals.masterChain.getLength()} " +
+				       $"from the network");
+				bool success = Blockchain.saveMasterChainToDisk();
+				if (!success)
+				{
+					cliLog("Failed to save the chain to disk..");
+					return;
+				}
+
+				string savePath = Path.Combine(Storage.appDirectoryPath, "master_blockchain");
+				cliLog($"Saved the chain to disk at {savePath}");
+			}
 		}
 
 		/**
