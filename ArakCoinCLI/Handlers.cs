@@ -213,6 +213,8 @@ public static class Handlers
 					           $"Please try again");
 				    }
 			    }
+
+			    Settings.startingNodes = new List<Host>() { startingNode };
 		    }
 
 		    bool saved = Settings.saveRuntimeSettingsToSettingsFile();

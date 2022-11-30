@@ -86,6 +86,8 @@ namespace ArakCoinCLI
 			cliLog("\nSTATUS: ");
 			cliLog($"\tNode Services: {(Settings.isNode ? "Online" : "offline")}");
 			cliLog($"\tBackground Mining: {(Settings.isMiner ? "Online" : "offline")}");
+			if (Settings.isNode)
+				cliLog($"\tNode IP: {Settings.nodeIp}, Port: {Settings.nodePort}");
 			cliLog($"\tLocal wallet addres: {Settings.nodePublicKey}");
 			cliLog($"\tLocal wallet balance: {Globals.lastBalance}");
 			cliLog($"\tNetwork chain height: {Globals.chainHeight}");

@@ -37,6 +37,10 @@ public class Settings
 			return false;
 		}
 
+		//prevent default lists from being read before deserializing the file to disk
+		Settings.startingNodes = new List<Host>();
+		Settings.manuallyBlacklistedNodes = new List<Host>();
+		
 		bool success = Serialize.deserializeJsonToSettings(jsonSettings); //deserialize it and put values in memory
 		if (!success)
 		{
@@ -215,7 +219,6 @@ public class Settings
 	{
 		new Host("192.168.1.19", 8000),
 		new Host("20.173.66.180", 8000)
-
 	};
 
 	/**
