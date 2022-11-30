@@ -182,8 +182,12 @@ public static class Communication
      */
     public static void broadcastNetworkMessage(NetworkMessage message)
     {
+        Host self = new Host(Settings.nodeIp, Settings.nodePort);
         foreach (var node in HostsManager.getNodes())
         {
+            if (node == self)
+                continue; //don't broadcast to self
+            
             Communication.communicateWithNode(message, node);
         }
     }

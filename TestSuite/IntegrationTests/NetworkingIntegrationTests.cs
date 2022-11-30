@@ -23,6 +23,32 @@ public class NetworkingIntegrationTests
      */
     private Host host;
     
+    [OneTimeSetUp]
+    public void GlobalSetup()
+    {
+        try
+        {
+            //backup current master_blockchain if it exists
+            File.Copy(Path.Combine(Storage.appDirectoryPath, "master_blockchain"), 
+                Path.Combine(Storage.appDirectoryPath, "master_blockchain_testbackup")); 
+        }
+        catch {}
+    }
+    
+    [OneTimeTearDown]
+    public void GlobalTeardown()
+    {
+        //restore master_blockchain if it existed, and delete the backup the test created
+        Storage.deleteFile("master_blockchain");
+        try
+        {
+            File.Copy(Path.Combine(Storage.appDirectoryPath, "master_blockchain_testbackup"), 
+                Path.Combine(Storage.appDirectoryPath, "master_blockchain"));
+        }
+        catch {}
+        Storage.deleteFile("master_blockchain_testbackup");
+    }
+    
     [SetUp]
     public void Setup()
     {
@@ -119,7 +145,6 @@ public class NetworkingIntegrationTests
         Assert.IsTrue(networkMessage.messageTypeEnum == MessageTypeEnum.ECHO);
         Assert.IsTrue(networkMessage.rawMessage == sendMsg);
         
-        
         //each test must stop the listening server
         listener.stopListeningServer();
         
@@ -136,7 +161,7 @@ public class NetworkingIntegrationTests
         Settings.manuallyBlacklistedNodes  = new List<Host>(); //set empty
         HostsManager.removeNodeFromBlacklist(new Host("1.1.1.1", 9000)); //test node 1
         HostsManager.removeNodeFromBlacklist(new Host("2.2.2.2", 9000)); //test node 2
-        
+
         Assert.IsTrue(ArakCoin.Globals.masterChain.getLength() == 0);
         
         //create a listener as the node, and start it
@@ -334,8 +359,6 @@ public class NetworkingIntegrationTests
 
         //each test must stop the listening server
         listener.stopListeningServer();
-        
-        Utilities.sleep(5000);
     }
 
     //Test async mining on a single separate task

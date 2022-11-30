@@ -131,8 +131,11 @@ public static class Handlers
 					                        $"Public key: {keypair.publicKey}\n" +
 					                        $"Private key: {keypair.privateKey}");
 				    }
-				    
+
+				    Settings.nodePublicKey = keypair.publicKey;
+				    Settings.nodePrivateKey = keypair.privateKey;
 				    cliLog("Keypair was succesfully validated");
+				    
 				    break;
 			    }
 			    else //only 2 is the other valid option which indicates manual entering of keypair
@@ -140,16 +143,16 @@ public static class Handlers
 				    cliLog("Enter the public key address for receiving coins to (including miner rewards)\n" +
 				           "(must be Ed25519 compliant in 32-byte hex format)");
 				    var publicKey = getInput();
-				    Settings.nodePublicKey = input;
 				    cliLog("Enter the corresponding private key (this will only be stored locally, not shared)\n" +
 				           "(must be Ed25519 compliant in 32-byte hex format)");
 				    var privateKey = getInput();
-				    Settings.nodePrivateKey = input;
 
 				    //test correct keypair was entered
 				    validated = Cryptography.testKeypair(publicKey, privateKey);
 				    if (validated)
 				    {
+					    Settings.nodePublicKey = publicKey;
+					    Settings.nodePrivateKey = privateKey;
 					    cliLog($"Keypair was succesfully validated");
 					    break;
 				    }
@@ -163,7 +166,7 @@ public static class Handlers
 		    if (Settings.isMiner)
 		    {
 			    cliLog("Since you've selected to be a miner, what is the minimum miner fee for transactions" +
-			           "to be allowed into the local mempool? (enter 0 for none)");
+			           " to be allowed into the local mempool? (enter 0 for none)");
 			    Settings.minMinerFee = getIntInput(false);
 			    cliLog($"What should the maximum local mempool size be? (this is recommended to be larger than" +
 			           $" the protocol block transaction limit of {Protocol.MAX_TRANSACTIONS_PER_BLOCK}), however" +

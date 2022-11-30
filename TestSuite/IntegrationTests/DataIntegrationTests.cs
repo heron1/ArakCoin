@@ -212,6 +212,8 @@ public class DataIntegrationTests
         string? junkData = Storage.readJsonFromDisk($"invalid_{Settings.jsonFilename}");
         Assert.IsNotNull(junkData);
         Assert.IsTrue(junkData == "some bad data");
+        
+        Settings.nodePort = originalPort; //set port back to original value
     }
     
     [Test]

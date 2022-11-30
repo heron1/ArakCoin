@@ -110,11 +110,17 @@ public static class NetworkingManager
         var newNodes = new ConcurrentBag<Host>(); //thread safe container for adding new nodes in parallel
         var nodes = HostsManager.getNodes(); //non-mutating nodes copy
         var tasks = new Task[nodes.Count]; //parallel tasks array
+        
+        Host self = new Host(Settings.nodeIp, Settings.nodePort);
         for (var i = 0; i < nodes.Count; i++)
         {
             var node = nodes[i];
+
             tasks[i] = Task.Run(() =>
             {
+                if (node == self)
+                    return; //don't communicate with self
+                
                 var nodeListRequestMsg = new NetworkMessage(MessageTypeEnum.GETNODES, "");
                 var serializedNetworkMsg = Serialize.serializeNetworkMessageToJson(nodeListRequestMsg);
                 string? resp = Communication.communicateWithNode(serializedNetworkMsg, node).Result;

@@ -35,7 +35,10 @@ namespace ArakCoinCLI
 			if (Settings.isNode)
 			{
 				//load local masterchain and retrieve consensus chain from network
-				Blockchain.loadMasterChainFromDisk();
+				if (Blockchain.loadMasterChainFromDisk())
+					cliLog("Successfully loaded local chain from disk..");
+				else
+					cliLog("Failed to load a local chain from disk..");
 				cliLog("Attempting to establish consensus chain from network..");
 				NetworkingManager.synchronizeConsensusChainFromNetwork();
 				cliLog($"Local chain set with length {ArakCoin.Globals.masterChain.getLength()} " +
@@ -83,6 +86,7 @@ namespace ArakCoinCLI
 			cliLog("\nSTATUS: ");
 			cliLog($"\tNode Services: {(Settings.isNode ? "Online" : "offline")}");
 			cliLog($"\tBackground Mining: {(Settings.isMiner ? "Online" : "offline")}");
+			cliLog($"\tLocal wallet addres: {Settings.nodePublicKey}");
 			cliLog($"\tLocal wallet balance: {Globals.lastBalance}");
 			cliLog($"\tNetwork chain height: {Globals.chainHeight}");
 

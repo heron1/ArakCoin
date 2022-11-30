@@ -81,6 +81,7 @@ public static class AsyncTasks
 
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
+        Host self = new Host(Settings.nodeIp, Settings.nodePort);
 
         Task.Run(() =>
         {
@@ -92,6 +93,9 @@ public static class AsyncTasks
                     NetworkingManager.updateHostsFileFromKnownNodes();
                     foreach (var node in HostsManager.getNodes())
                     {
+                        if (node == self)
+                            continue; //don't register with self
+                        
                         NetworkingManager.registerThisNodeWithAnotherNode(node);
                     }
 
