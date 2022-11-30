@@ -321,6 +321,10 @@ public static class Handlers
 			}
 			cliLog($"\ttransaction successfully created with tx id: {tx.id}\n\tBroadcasting tx to network..");
 			
+			//add the tx to our local mempool if we're a node
+			if (Settings.isNode)
+				ArakCoin.Globals.masterChain.addTransactionToMempoolGivenNodeRequirements(tx);
+			
 			//we immediately broadcast the transaction as a single item in a mempool - this is because the logic
 			//of receiving new mempools and transactions should be the same at nodes. However if this client spams this
 			//ability they risk being blacklisted by nodes, the same way as a spamming node would be
