@@ -149,6 +149,7 @@ public static class Communication
                 return null;
 
             string? receivedMsg = await Communication.receiveMessage(stream);
+            Utilities.log($"temp: {receivedMsg}");
             
             return receivedMsg;
         }
