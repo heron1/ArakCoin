@@ -56,6 +56,10 @@ public static class NetworkingManager
                 Utilities.log($"candidate chain received from {node} with height {receivedChain.getLength()}");
                 candidateChains.Add(receivedChain);
             }
+            else
+            {
+                Utilities.log($"Failed to receive valid chain from {node}");
+            }
         }
 
         //establish the winning blockchain from the network, and set this local chain to it.
