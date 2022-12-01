@@ -52,7 +52,10 @@ public static class NetworkingManager
         {
             var receivedChain = getBlockchainFromOtherNode(node);
             if (receivedChain is not null)
+            {
+                Utilities.log($"candidate chain received from {node} with height {receivedChain.getLength()}");
                 candidateChains.Add(receivedChain);
+            }
         }
 
         //establish the winning blockchain from the network, and set this local chain to it.
