@@ -9,11 +9,6 @@ namespace ArakCoin;
  */
 public static class Serialize
 {
-    //todo sanity checks - all these methods should assert the types are correctly formatted (not valid)
-    //both for serialization and deserialization
-    //todo remaining - blockchain formatting
-    //todo remaining - mempool formatting
-
     static Serialize()
     {
         JsonConvert.DefaultSettings = () => new JsonSerializerSettings
@@ -55,7 +50,8 @@ public static class Serialize
     //attempts to serialize the input blockchain into a json string. If this fails, returns null
     public static string? serializeBlockchainToJson(Blockchain bchain)
     {
-        return JsonConvert.SerializeObject(bchain);
+        lock (bchain.blockChainLock)
+            return JsonConvert.SerializeObject(bchain);
     }
     
     //attempts to deserialize the input string to a blockchain object. If this fails, returns null
