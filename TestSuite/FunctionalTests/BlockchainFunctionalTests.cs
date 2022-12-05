@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Cryptography;
 using ArakCoin;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace TestSuite.FunctionalTests;

@@ -1,4 +1,5 @@
-﻿using ArakCoin.Networking;
+﻿using ArakCoin.Data;
+using ArakCoin.Networking;
 
 namespace ArakCoin;
 

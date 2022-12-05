@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace ArakCoin.Networking;

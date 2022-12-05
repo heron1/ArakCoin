@@ -1,4 +1,5 @@
-﻿using static ArakCoinCLI.Globals;
+﻿using ArakCoin.Data;
+using static ArakCoinCLI.Globals;
 
 namespace ArakCoinCLI;
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using ArakCoin;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace TestSuite.IntegrationTests;

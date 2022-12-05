@@ -1,7 +1,7 @@
 ﻿using ArakCoin.Networking;
 using ArakCoin.Transactions;
 
-namespace ArakCoin;
+namespace ArakCoin.Data;
 
 /**
  * A wrapper class for serializing and deserializing data. Also performs format checking, but no validation.

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace ArakCoin.Networking;

@@ -1,4 +1,6 @@
-﻿namespace ArakCoin.Networking;
+﻿using ArakCoin.Data;
+
+namespace ArakCoin.Networking;
 
 /**
  * All network messages will be communicated in the serialized json version of this class. It will specify the type

@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Runtime.CompilerServices;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace ArakCoin;

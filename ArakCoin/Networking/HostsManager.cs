@@ -1,4 +1,6 @@
-﻿namespace ArakCoin.Networking;
+﻿using ArakCoin.Data;
+
+namespace ArakCoin.Networking;
 
 /**
  * This class should contain an easy way to read and write nodes to/from a hosts file, and store them in memory
