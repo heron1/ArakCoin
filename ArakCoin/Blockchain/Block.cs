@@ -43,6 +43,7 @@ public class Block
 		string? transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
 		if (transactionsString is null)
 			return null;
+		
 		string inputStr =
 			$"{block.index.ToString()},{transactionsString}," +
 			$"{block.timestamp.ToString()}," +

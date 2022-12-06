@@ -78,6 +78,11 @@ public class Settings
 	 */
 	private static void generateNewSettingsFileOnDisk()
 	{
+		//first create a random public/private keypair we can use
+		var keypair = Cryptography.generatePublicPrivateKeyPair();
+		Settings.nodePublicKey = keypair.publicKey;
+		Settings.nodePrivateKey = keypair.privateKey;
+		
 		var serializedSettings = Serialize.serializeSettingsToJson();
 		if (serializedSettings is null)
 		{
