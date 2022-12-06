@@ -11,12 +11,20 @@ namespace ArakCoin;
 public static class GlobalHandler
 {
     public static event EventHandler<Block>? latestBlockUpdateEvent; //event associated with a blockchain update
+    public static event EventHandler<string>? logUpdate; //event associated with a log update
     
-    private static void OnLatestBlockUpdateEvent(Block lastBlock)
+    public static void OnLatestBlockUpdateEvent(Block lastBlock)
     {
         EventHandler<Block>? handler = latestBlockUpdateEvent;
         if (handler is not null)
             handler(null, lastBlock);
+    }
+    
+    public static void OnLogUpdate(string newLogMsg)
+    {
+        EventHandler<string>? handler = logUpdate;
+        if (handler is not null)
+            handler(null, newLogMsg);
     }
     
     /**

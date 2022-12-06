@@ -90,6 +90,7 @@ public static class Utilities
 		if (Settings.displayLogMessages)
 		{
 			Console.WriteLine(logMsg);
+			GlobalHandler.OnLogUpdate(logMsg);
 		}
 	}
 
