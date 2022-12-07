@@ -165,6 +165,9 @@ public class Transaction
 	{
 		if (tx.id is null || tx.txIns is null || tx.txOuts is null)
 			return false;
+		
+		//ensure txOuts are valid
+		validateTxOuts(tx.txOuts);
 
 		//ensure transaction hasn't been tampered with
 		if (getTxId(tx) != tx.id)
@@ -198,6 +201,8 @@ public class Transaction
 		long totalTxOutValues = 0;
 		foreach (var txOut in tx.txOuts)
 		{
+			if (txOut.amount <= 0)
+				return false; //every txOut amount must be positive
 			totalTxOutValues += txOut.amount; //increase total amount of coins found for the txOuts
 		}
 
@@ -328,6 +333,32 @@ public class Transaction
     public static string getMinerPublicKeyFromBlock(Block block)
     {
 	    return block.transactions[0].txOuts[0].address;
+    }
+
+    /**
+     * Checks whether the input txOuts are valid or not
+     */
+    public static bool validateTxOuts(TxOut[] txOuts)
+    {
+	    foreach (var txOut in txOuts)
+	    {
+		    if (txOut.amount <= 0)
+			    return false;
+
+		    if (!validateAddressFormat(txOut.address))
+			    return false;
+	    }
+
+	    return true;
+    }
+
+    public static bool validateAddressFormat(string? address)
+    {
+	    //addresses must be at least 1 character in length
+	    if (address is null || address.Length < 1)
+		    return false;
+
+	    return true;
     }
     
     #region equality override

@@ -42,6 +42,10 @@ public static class TransactionFactory
         UTxOut[] uTxOuts, List<Transaction> mempool, 
         long minerFee = 0, bool addToMemPool = true)
     {
+        //first ensure txOuts are valid
+        if (!Transaction.validateTxOuts(txOuts))
+            return null;
+        
         //add the miner fee to this transaction if it's not 0
         if (minerFee != 0)
         {
