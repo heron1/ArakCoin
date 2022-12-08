@@ -56,9 +56,8 @@ public class NodeListenerServer : IDisposable
         isRunning = false;
     }
     
-    private void listeningEntryPoint()
+    private async Task listeningEntryPoint()
     {
-
         //create the tcp listener using this node's IP on its given port in the settings file
         IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any, Settings.nodePort);
         TcpListener listener = new(ipEndPoint); 
@@ -68,41 +67,36 @@ public class NodeListenerServer : IDisposable
         token.Register(() => listener.Stop()); 
         
         listener.Start(); //start listening for connections
-        Task listenLoopTask = Task.Run(async () =>
+        try
         {
-            try
+            connectionActive = true;
+            while (!token.IsCancellationRequested)
             {
-                connectionActive = true;
-                while (!token.IsCancellationRequested)
-                {
-                    using TcpClient handler = await listener.AcceptTcpClientAsync(token);
-                    await using NetworkStream stream = handler.GetStream();
+                using TcpClient handler = await listener.AcceptTcpClientAsync(token);
+                await using NetworkStream stream = handler.GetStream();
 
-                    string? receivedMsg = await Communication.receiveMessage(stream);
-                    if (receivedMsg is not null)
-                    {
-                        NetworkMessage response = processResponseMsg(receivedMsg);
-                        await Communication.sendMessage(response.ToString(), stream);
-                    }
-                    else
-                    {
-                        Utilities.log("timeout communicating with host..");
-                    }
+                string? receivedMsg = await Communication.receiveMessage(stream);
+                if (receivedMsg is not null)
+                {
+                    NetworkMessage response = processResponseMsg(receivedMsg);
+                    await Communication.sendMessage(response.ToString(), stream);
+                }
+                else
+                {
+                    Utilities.log("timeout communicating with host..");
                 }
             }
-            catch (OperationCanceledException e) {} //connection failed - expected behaviour if host is down
-            catch (Exception e) //unknown exception, log this to investigate
-            {
-                Utilities.exceptionLog($"Unexpected listener exception: {e}");
-            }
-            finally
-            {
-                listener.Stop();
-                connectionActive = false;
-            }
-        });
-
-        listenLoopTask.Wait();
+        }
+        catch (OperationCanceledException e) {} //connection failed - expected behaviour if host is down
+        catch (Exception e) //unknown exception, log this to investigate
+        {
+            Utilities.exceptionLog($"Unexpected listener exception: {e}");
+        }
+        finally
+        {
+            listener.Stop();
+            connectionActive = false;
+        }
     }
 
     /**

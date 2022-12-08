@@ -175,10 +175,13 @@ public class Settings
 	[JsonProperty] public static int maxMempoolSize = 25;
 
 	/**
-	 * Time out a network communication action after waiting this number of milliseconds
+	 * Time out a network communication action after waiting this number of milliseconds, even if in the middle of
+	 * a successful send/receive operation. This is to prevent a DOS (intentional or accidental) from an arbitrarily
+	 * large message being received. Note however that large blockchain receive operations will take a long time, so
+	 * this should be set high enough so that such an operation does not time out.
 	 */
 	[JsonProperty]
-	public static int networkCommunicationTimeoutMs = 2000;
+	public static int networkCommunicationTimeoutMs = 10000;
 
 	/**
 	 * This setting is only applicable if the isNode property is set to true.

@@ -394,7 +394,30 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp()
     {
-        var nodes = HostsManager.getNodes();
-        int b = 3;
+        // var timeoutStreamRead = Task.Delay(100);
+        // for (int i = 0; i < 30; i++)
+        // {
+        //     Utilities.sleep(40);
+        //     timeoutStreamRead = Task.Delay(100);
+        // }
+        //
+        // bool s = timeoutStreamRead.IsCompleted;
+        // int b = 3;
+
+        // Host node = new Host("192.168.1.7", 8000);
+        // var resp = Task.Run(() => NetworkingManager.getBlockchainFromOtherNode(node));
+        // var resp2 = NetworkingManager.registerThisNodeWithAnotherNode(node).Result;
+        // resp.Wait();
+        // int b = 3;
+        // // IPEndPoint ipEndPoint = IPEndPoint.Parse(node.ToString());
+        // using TcpClient client = new();
+        // client.ConnectAsync(ipEndPoint).Wait();
+        // await using NetworkStream stream = client.GetStream();
+        // bool success = await Communication.sendMessage(message, stream);
+        // if (!success)
+        //     return null;
+
+
+
     }
 }

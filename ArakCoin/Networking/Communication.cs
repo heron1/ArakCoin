@@ -67,7 +67,7 @@ public static class Communication
         
         //start a timeout that once reached, the connection should terminate if the full receive hasn't completed by
         //then.
-        var timeoutTask = Task.Delay(Settings.networkCommunicationTimeoutMs);
+        var timeoutConnection = Task.Delay(Settings.networkCommunicationTimeoutMs);
 
         try
         {
@@ -77,8 +77,8 @@ public static class Communication
                 var asyncStreamRead = stream.ReadAsync(buffer, 0, buffer.Length);
 
                 //check whether the timeout task has completed. If it has, we return null
-                await Task.WhenAny(asyncStreamRead, timeoutTask);
-                if (timeoutTask.IsCompleted && !asyncStreamRead.IsCompleted)
+                await Task.WhenAny(asyncStreamRead, timeoutConnection);
+                if (timeoutConnection.IsCompleted)
                     return null;
 
                 //timeout not reached, so the completed task must be asyncStreamRead
