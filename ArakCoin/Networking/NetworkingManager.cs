@@ -45,27 +45,32 @@ public static class NetworkingManager
     {
         NetworkingManager.updateHostsFileFromKnownNodes(); //store all known nodes from the network in the hosts file
 
-        List<Blockchain> candidateChains = new List<Blockchain>();
+        ConcurrentBag<Blockchain> candidateChains = new(); //thread safe container
         candidateChains.Add(Globals.masterChain); //the local chain is always added first, to win any tiebreakers
+        List<Task> getChainTasks = new();
             
-        //now add every local chain that exists at every known node to the candidate chains
+        //now add every local chain that exists at every known node to the candidate chains, in parallel
         foreach (var node in HostsManager.getNodes())
         {
-            var receivedChain = getBlockchainFromOtherNode(node);
-            if (receivedChain is not null)
+            getChainTasks.Add(Task.Run(() =>
             {
-                Utilities.log($"candidate chain received from {node} with height {receivedChain.getLength()}");
-                candidateChains.Add(receivedChain);
-            }
-            else
-            {
-                Utilities.log($"Failed to receive valid chain from {node}");
-            }
+                var receivedChain = getBlockchainFromOtherNode(node);
+                if (receivedChain is not null)
+                {
+                    Utilities.log($"candidate chain received from {node} with height {receivedChain.getLength()}");
+                    candidateChains.Add(receivedChain);
+                }
+                else
+                {
+                    Utilities.log($"Failed to receive valid chain from {node}");
+                }
+            }));
         }
+        Task.WaitAll(getChainTasks.ToArray());
 
         //establish the winning blockchain from the network, and set this local chain to it.
         //If null is returned, do nothing (keep the local chain)
-        var winningChain = Blockchain.establishWinningChain(candidateChains);
+        var winningChain = Blockchain.establishWinningChain(candidateChains.ToList());
         if (winningChain is not null)
             Globals.masterChain.replaceBlockchain(winningChain);
     } 
