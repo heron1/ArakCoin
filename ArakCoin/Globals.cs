@@ -13,6 +13,9 @@ public static class Globals
     //lock to synchronize mining between threads
     public static readonly object asyncMiningLock = new object(); 
     
+    //whether the mining process is undergoing a cancellation process
+    public static bool miningIsBeingCancelled = false;
+    
     //the global node listening server
     public static NodeListenerServer nodeListener = new NodeListenerServer();
     

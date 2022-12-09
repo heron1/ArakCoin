@@ -14,6 +14,8 @@ public static class AsyncTasks
      */
     public static CancellationTokenSource mineBlocksAsync()
     {
+        Globals.miningIsBeingCancelled = false;
+
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
         Task.Run(() =>
@@ -22,7 +24,7 @@ public static class AsyncTasks
             {
                 lock (Globals.asyncMiningLock)
                 {
-                    if (!cancelToken.IsCancellationRequested)
+                    if (!cancelToken.IsCancellationRequested && !Globals.miningIsBeingCancelled)
                     {
                         //create and begin mining the next block on this node's own local master chain
                         Transaction[] toBeMinedTx = Globals.masterChain.getTxesFromMempoolForBlockMine();
@@ -44,7 +46,7 @@ public static class AsyncTasks
                     }
                     else
                     {
-                        Utilities.log("Mining stopped via token interrupt..");
+                        Utilities.log("Mining stopped via interrupt..");
                         break;
                     }
                 }
@@ -59,6 +61,10 @@ public static class AsyncTasks
      */
     public static void cancelMineBlocksAsync(CancellationTokenSource cancelTokenSource)
     {
+        Globals.miningIsBeingCancelled = true;
+        if (Globals.nextBlock is not null)
+            Globals.nextBlock.cancelMining = true;
+        
         //we acquire a lock here not because the .Cancel() method isn't atomic, but because we should wait for
         //an async mining thread to release its lock (indicating it's done for that block mine) before cancelling.
         //This guarantees that after we call this method, no further mining takes place (no race condition)

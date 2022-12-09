@@ -371,15 +371,15 @@ public class NetworkingIntegrationTests
         //perform this same test twice, so it's known async mining can be started & stopped repeatedly
         for (int i = 0; i < 2; i++)
         {
-            //begin async mining, retrievie cancellation token
-            var miningCancellationToken = AsyncTasks.mineBlocksAsync();
+            //begin async mining
+            GlobalHandler.enableMining();
 
             //sleep this thread to allow some async mining
             while (ArakCoin.Globals.masterChain.getLength() == 0)
                 Utilities.sleep(100);
 
-            //cancel the mining and retrieve the immediate chain length
-            AsyncTasks.cancelMineBlocksAsync(miningCancellationToken);
+            //cancel the mining
+            GlobalHandler.disableMining();
             int chainLength = ArakCoin.Globals.masterChain.getLength();
 
             //sleep this thread for 1 whole second, no mining should have taken place due to the cancellation
@@ -394,29 +394,6 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp()
     {
-        // var timeoutStreamRead = Task.Delay(100);
-        // for (int i = 0; i < 30; i++)
-        // {
-        //     Utilities.sleep(40);
-        //     timeoutStreamRead = Task.Delay(100);
-        // }
-        //
-        // bool s = timeoutStreamRead.IsCompleted;
-        // int b = 3;
-
-        // Host node = new Host("192.168.1.7", 8000);
-        // var resp = Task.Run(() => NetworkingManager.getBlockchainFromOtherNode(node));
-        // var resp2 = NetworkingManager.registerThisNodeWithAnotherNode(node).Result;
-        // resp.Wait();
-        // int b = 3;
-        // // IPEndPoint ipEndPoint = IPEndPoint.Parse(node.ToString());
-        // using TcpClient client = new();
-        // client.ConnectAsync(ipEndPoint).Wait();
-        // await using NetworkStream stream = client.GetStream();
-        // bool success = await Communication.sendMessage(message, stream);
-        // if (!success)
-        //     return null;
-
 
 
     }

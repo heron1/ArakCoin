@@ -21,7 +21,7 @@ public class Host
             throw new ArgumentException("ip is invalid", nameof(ip));
         
         //port format check
-        if (port < 0 || port > 65535)
+        if (!isPortFormatValid(port))
             throw new ArgumentException("port is invalid", nameof(port));
         
         this.ip = ip;
@@ -36,7 +36,7 @@ public class Host
             return false;
         
         //port format check
-        if (port < 0 || port > 65535)
+        if (!isPortFormatValid(port))
             return false;
 
         return true;
@@ -62,6 +62,14 @@ public class Host
             if (!Int32.TryParse(octet, out octetNum) || octetNum > 255)
                 return false;
         }
+
+        return true;
+    }
+
+    public static bool isPortFormatValid(int port)
+    {
+        if (port < 0 || port > 65535)
+            return false;
 
         return true;
     }

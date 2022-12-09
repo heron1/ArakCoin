@@ -35,7 +35,7 @@ public class NodeListenerServer : IDisposable
         cancellationTokenSource = new CancellationTokenSource();
         listeningEntryPointTask = Task.Run(listeningEntryPoint);
         var timeoutTask = Task.Delay(1000); //timeout if thread doesn't set connection active
-        
+
         while (!connectionActive) //wait until the async task sets the connection as active before returning
         {
             if (timeoutTask.IsCompleted)
@@ -52,6 +52,7 @@ public class NodeListenerServer : IDisposable
         
         cancellationTokenSource.Cancel(); //trigger the cancellation token for the inner listenLoopTask
         listeningEntryPointTask.Wait(); //wait for the task to end
+        Utilities.log("stopped listening server..");
 
         isRunning = false;
     }
@@ -67,6 +68,7 @@ public class NodeListenerServer : IDisposable
         token.Register(() => listener.Stop()); 
         
         listener.Start(); //start listening for connections
+        Utilities.log("started listening server..");
         try
         {
             connectionActive = true;

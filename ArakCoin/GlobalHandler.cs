@@ -85,5 +85,42 @@ public static class GlobalHandler
         handleMasterBlockchainUpdate();
     }
 
+    public static void enableNodeServices()
+    {
+        //begin the node listening server
+        Globals.nodeListener.startListeningServer();
+
+        //begin node discovery & registration as a new Task in the background
+        Globals.nodeDiscoveryCancelToken =
+            AsyncTasks.nodeDiscoveryAsync(Settings.nodeDiscoveryDelaySeconds);
+
+        //begin periodic mempool broadcasting as a new Task in the background
+        Globals.mempoolCancelToken =
+            AsyncTasks.shareMempoolAsync(Settings.mempoolSharingDelaySeconds);
+
+        Settings.isNode = true;
+    }
+    
+    public static void disableNodeServices()
+    {
+        Globals.nodeListener.stopListeningServer();
+        AsyncTasks.cancelNodeDiscoveryAsync(Globals.nodeDiscoveryCancelToken);
+        AsyncTasks.cancelshareMempoolAsync(Globals.mempoolCancelToken);
+        
+        Settings.isNode = false;
+    }
+
+    public static void enableMining()
+    {
+        Globals.miningCancelToken = AsyncTasks.mineBlocksAsync();
+        Settings.isMiner = true;
+    }
+
+    public static void disableMining()
+    {
+        AsyncTasks.cancelMineBlocksAsync(Globals.miningCancelToken);
+        Settings.isMiner = false;
+    }
+    
     
 }

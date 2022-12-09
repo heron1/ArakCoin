@@ -79,6 +79,19 @@ public static class Utilities
 	{
 		return list.ToArray()[startIndex..endIndex].ToList();
 	}
+
+	/**
+	 * Attempts to convert the input string to an integer, returns null if this fails
+	 */
+	public static int? convertStringToInt(string integralString)
+	{
+		int output;
+		bool success = Int32.TryParse(integralString, out output);
+		if (!success)
+			return null;
+
+		return output;
+	}
 	
 	/**
 	 * For general logging, such as for warnings and info, we will call this function to log the message somewhere.
