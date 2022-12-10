@@ -1,0 +1,16 @@
+﻿<div class="inline">
+    <div><p>Address @addressNumber: </p></div>
+    <div><input size="64" @bind="address"></div>
+</div>
+<div class="inline">
+    <p>Send Amount: </p>
+    <div><input type="number" min="0" size="5" @bind="amount"></div>
+</div>
+
+@code {
+    [Parameter]
+    public int addressNumber { get; set; } = 1;
+    
+    public string address;
+    public long amount = 1;
+}

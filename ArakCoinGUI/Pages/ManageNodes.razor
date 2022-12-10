@@ -1,0 +1,155 @@
+﻿@page "/managenodes"
+@using ArakCoin.Networking
+@using ArakCoin
+@using ArakCoin_GUI.Data
+
+<h3>Manage Nodes</h3>
+<p class="heavy-font">Hardcoded Nodes: </p>
+@foreach (var node in Settings.startingNodes)
+{
+    <div class="inline">
+            <p>@node &nbsp;</p>
+            <img src="images/negative.svg" width="16" height="16" 
+                 @onclick="() => handleRemoveHardcodedNode(node)" class="mouseover"/>
+        </div>
+}
+<button @onclick=handleAddHardcodedNode>Add Hardcoded Node</button>
+<br /><br />
+
+<p class="heavy-font">Active Network Nodes: </p>
+@foreach (var node in HostsManager.getNodes())
+{
+    <div class="inline">
+        <p>@node &nbsp;</p>
+        @if (!Settings.startingNodes.Contains(node))
+        {
+            <img src="images/negative.svg" width="16" height="16"
+                 @onclick="() => handleRemoveNetworkedNode(node)" class="mouseover"/>
+        }
+    </div>
+}
+<button @onclick=handleAddNetworkedNode>Add Network Node</button>
+<br /><br />
+
+<p class="heavy-font">Blacklisted nodes: </p>
+@foreach (var node in HostsManager.getBlacklistedNodes())
+{
+    <div class="inline">
+        <p>@node &nbsp;</p>
+        <img src="images/negative.svg" width="16" height="16" 
+             @onclick="() => handleRemoveBlacklistedNode(node)" class="mouseover"/>
+    </div>
+}
+<button @onclick=handleAddBlacklistedNode>Add Blacklisted Node</button>
+
+@code {
+
+    async Task handleAddHardcodedNode()
+    {
+        string ip = await GuiUtilities.getPromptValue("Enter node ipv4 address:");
+        string port = await GuiUtilities.getPromptValue("Enter node port:");
+        if (ip is null || port is null)
+            return;
+        
+        if (!Host.isIpFormatValid(ip))
+        {
+            GuiUtilities.guiAlert("Invalid ipv4 address entered");
+            return;
+        }
+        
+        int? portInt = Utilities.convertStringToInt(port);
+        if (portInt is null || !Host.isPortFormatValid((int)portInt))
+        {
+            GuiUtilities.guiAlert("Invalid port entered");
+            return;
+        }
+        
+        Host newStartupNode = new Host(ip, (int)portInt);
+        if (!Settings.startingNodes.Contains(newStartupNode))
+        {
+            Settings.startingNodes.Add(newStartupNode);
+            Settings.saveRuntimeSettingsToSettingsFile();
+            HostsManager.addNode(newStartupNode);
+        }
+    }
+
+    void handleRemoveHardcodedNode(Host node)
+    {
+        Settings.startingNodes.Remove(node);
+        Settings.saveRuntimeSettingsToSettingsFile();
+    }
+    
+    async Task handleAddNetworkedNode()
+    {
+        string ip = await GuiUtilities.getPromptValue("Enter node ipv4 address:");
+        string port = await GuiUtilities.getPromptValue("Enter node port:");
+        if (ip is null || port is null)
+            return;
+        
+        if (!Host.isIpFormatValid(ip))
+        {
+            GuiUtilities.guiAlert("Invalid ipv4 address entered");
+            return;
+        }
+        
+        int? portInt = Utilities.convertStringToInt(port);
+        if (portInt is null || !Host.isPortFormatValid((int)portInt))
+        {
+            GuiUtilities.guiAlert("Invalid port entered");
+            return;
+        }
+        
+        Host newNetworkNode = new Host(ip, (int)portInt);
+        HostsManager.addNode(newNetworkNode);
+    }
+
+    void handleRemoveNetworkedNode(Host node)
+    {
+        HostsManager.removeNode(node);
+    }
+
+    async Task handleAddBlacklistedNode()
+    {
+        string ip = await GuiUtilities.getPromptValue("Enter node ipv4 address:");
+        string port = await GuiUtilities.getPromptValue("Enter node port:");
+        if (ip is null || port is null)
+            return;
+
+        if (!Host.isIpFormatValid(ip))
+        {
+            GuiUtilities.guiAlert("Invalid ipv4 address entered");
+            return;
+        }
+        
+        int? portInt = Utilities.convertStringToInt(port);
+        if (portInt is null || !Host.isPortFormatValid((int)portInt))
+        {
+            GuiUtilities.guiAlert("Invalid port entered");
+            return;
+        }
+
+        Host newBlacklistedNode = new Host(ip, (int)portInt);
+        HostsManager.addNodeToBlacklist(newBlacklistedNode);
+    }
+    
+    void handleRemoveBlacklistedNode(Host node)
+    {
+        HostsManager.removeNodeFromBlacklist(node);
+    }
+    
+    private void Callback(object? o, string update)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void Callback(object? o, Block newBlock)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    protected override void OnInitialized()
+    {
+        //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+}

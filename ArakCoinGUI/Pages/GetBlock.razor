@@ -1,0 +1,129 @@
+﻿@page "/getblock"
+@using ArakCoin_GUI.Data
+@using ArakCoin.Data
+@using ArakCoin.Networking
+@using ArakCoin
+@using System.Text
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>GetBlock</h3>
+    
+    <div class="inline">
+        <div><p>Block ID: </p></div>
+        <div><input size="10" type="number" @bind="blockIndex"></div>
+    </div>
+    <button @onclick="handleGetBlock">Retrieve Block Details</button>
+    <p><em>@status</em></p>
+
+}
+
+@code {
+    int blockIndex = 1;
+    string status = "";
+    bool ongoingAsync = false;
+    public static readonly object asyncLock = new object(); 
+
+    async Task handleGetBlock()
+    {
+        lock (asyncLock)
+        {
+            if (ongoingAsync)
+                return;
+
+            ongoingAsync = true;
+        }
+        
+        try
+        {
+            Block? retrievedBlock = null;
+            Host? receivedNode = null;
+            if (Settings.isNode) //retrieve block from the local chain if we're a node
+            {
+                retrievedBlock = ArakCoin.Globals.masterChain.getBlockByIndex(blockIndex);
+                receivedNode = new Host(Settings.nodeIp, Settings.nodePort);
+            }
+            else //else we must get it from the network
+            {
+                var nm = new NetworkMessage(MessageTypeEnum.GETBLOCK, blockIndex.ToString());
+                foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+                {
+                    if (node == new Host(Settings.nodeIp, Settings.nodePort))
+                        continue; //don't search self
+                    
+                    status = $"attempting to retrieve block {blockIndex} from {node}..";
+                    StateHasChanged();
+                    
+                    var respMsg = await Communication.communicateWithNode(nm, node);
+                    if (respMsg is null)
+                        continue;
+
+                    //ensure received raw message can be deserialized into a valid block
+                    Block? deserializedBlock = Serialize.deserializeJsonToBlock(respMsg.rawMessage);
+                    if (deserializedBlock is null)
+                        continue;
+                    if (deserializedBlock.calculateBlockHash() is null)
+                        continue;
+
+                    retrievedBlock = deserializedBlock;
+                    receivedNode = node;
+                }
+            }
+            if (retrievedBlock is null || receivedNode is null)
+            {
+                GuiUtilities.guiAlert("Error retrieving the given block from the network..");
+                return;
+            }
+
+            string minedByString = retrievedBlock.index == 1 ? ""
+                : $"Mined by: {retrievedBlock.transactions[0].txOuts[0].address}\n";
+            StringBuilder vb = new();
+            vb.Append($"Block {retrievedBlock.index} successfully retrieved " +
+                      $"(difficulty {retrievedBlock.difficulty}):\n" +
+                      $"Block hash: {retrievedBlock.calculateBlockHash()}\n" +
+                      $"{minedByString}" +
+                      $"Nonce: {retrievedBlock.nonce}, Timestamp: {retrievedBlock.timestamp}\n" +
+                      $"Previous block hash: {retrievedBlock.prevBlockHash}\n" +
+                      $"Transactions:\n");
+            foreach (var tx in retrievedBlock.transactions)
+            {
+                vb.Append($"\tTx id: {tx.id}\n\tTx Outs:");
+                foreach (var txout in tx.txOuts)
+                {
+                    vb.Append($"\t{txout.address} received {txout.amount} coins\n");
+                }
+                vb.Append("\n");
+            }
+            GuiUtilities.guiAlert(vb.ToString());
+        }
+        finally
+        {
+            lock (asyncLock)
+            {
+                status = "";
+                ongoingAsync = false;
+                StateHasChanged();
+            }
+        }
+    }
+    
+    private void Callback(object? o, string update)
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        private void Callback(object? o, Block newBlock)
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        
+        protected override void OnInitialized()
+        {
+            //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+            GlobalHandler.latestBlockUpdateEvent += Callback;
+            GuiHandler.stateUpdate += Callback;
+        }
+}

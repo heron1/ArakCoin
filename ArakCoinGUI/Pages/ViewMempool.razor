@@ -1,0 +1,47 @@
+﻿@page "/viewmempool"
+@using ArakCoin_GUI.Data
+@using ArakCoin
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else if (!Settings.isNode)
+{
+    <p>Only nodes can have a mempool</p>
+}
+else
+{
+    <h3>View Mempool</h3>
+    
+    @foreach (var tx in ArakCoin.Globals.masterChain.mempool)
+    {
+        <hr />
+        <p class="heavy-font">Tx Id: @tx.id</p>
+        <p>Tx Outs - </p>
+        @foreach (var txOut in tx.txOuts)
+        {
+            <p>@($"Address: {txOut.address}")</p>
+            <p>@($"Amount: {txOut.amount}")</p>
+            <br />
+        }
+    }
+}
+
+@code {
+    private void Callback(object? o, string update)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void Callback(object? o, Block newBlock)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    protected override void OnInitialized()
+    {
+        //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+}

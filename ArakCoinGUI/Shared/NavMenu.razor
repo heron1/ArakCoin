@@ -1,0 +1,64 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+	<div class="container-fluid">
+		<a class="navbar-brand" href="">Arak Coin</a>
+		<button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+	</div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+	<nav class="flex-column">
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+				<span class="oi oi-home" aria-hidden="true"></span> Home
+			</NavLink>
+		</div>
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="createtransaction">
+				<span class="oi oi-plus" aria-hidden="true"></span> Create Transaction
+			</NavLink>
+		</div>
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="getbalance">
+				<span class="oi oi-dollar" aria-hidden="true"></span> Query Balance 
+			</NavLink>
+		</div>
+		<div class="nav-item px-3">
+                			<NavLink class="nav-link" href="getblock">
+                				<span class="oi oi-media-stop" aria-hidden="true"></span> Query Block 
+                			</NavLink>
+                </div>
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="livelog">
+				<span class="oi oi-list-rich" aria-hidden="true"></span> Live Log
+			</NavLink>
+		</div>
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="viewmempool">
+				<span class="oi oi-spreadsheet" aria-hidden="true"></span> View Mempool
+			</NavLink>
+		</div>
+		<div class="nav-item px-3">
+	        <NavLink class="nav-link" href="managenodes">
+	            <span class="oi oi-link-intact" aria-hidden="true"></span> Manage Nodes
+	        </NavLink>
+	    </div>
+		<div class="nav-item px-3">
+			<NavLink class="nav-link" href="settings">
+				<span class="oi oi-cog" aria-hidden="true"></span> Settings
+			</NavLink>
+		</div>
+	</nav>
+</div>
+
+@code {
+	private bool collapseNavMenu = true;
+
+	private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+	private void ToggleNavMenu()
+	{
+		collapseNavMenu = !collapseNavMenu;
+	}
+}

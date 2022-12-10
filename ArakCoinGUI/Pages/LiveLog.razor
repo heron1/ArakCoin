@@ -1,0 +1,29 @@
+﻿@using ArakCoin
+@page "/livelog"
+
+<h3>Live Log</h3>
+@foreach (var s in getOrderedQueue())
+{
+    <p>@s</p>
+}
+
+@code {
+    private void Callback(object? o, string newLogMsg)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private List<string> getOrderedQueue()
+    {
+        var queue = StringQueue.retrieveOrderedQueue();
+        queue.Reverse(); //reverse the queue to print from the top
+        
+        return queue;
+    }
+
+    protected override void OnInitialized()
+    {
+        GlobalHandler.logUpdate += Callback;
+        
+    }
+}

@@ -1,0 +1,49 @@
+﻿@page "/"
+@using ArakCoin
+@using ArakCoin_GUI.Data
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>Status</h3>
+    <p>Node Services: @(Settings.isNode ? "Online" : "Offline")</p>
+    <p>Background Mining: @(Settings.isMiner ? "Online" : "Offline")</p>
+
+    <br />
+    <h3>Wallet</h3>
+    <p>Public key: @Settings.nodePublicKey</p>
+    <p>Balance: @GuiGlobals.lastBalance</p>
+
+    <br />
+    <h3>Network</h3>
+    <p>Chain Height: @GuiGlobals.chainHeight</p>
+    @if (Settings.isNode && GuiGlobals.chainHeight > 1)
+    {
+        <p>Node IP: @Settings.nodeIp</p>
+        <p>Node Port: @Settings.nodePort</p>
+        <p>Last mined block by: 
+            @(Globals.masterChain.getLastBlock()?.transactions[0].txOuts[0].address)
+        </p>
+    }
+}
+
+@code {
+    private void Callback(object? o, string update)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void Callback(object? o, Block newBlock)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    protected override void OnInitialized()
+    {
+        //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+}

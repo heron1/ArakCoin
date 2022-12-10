@@ -1,0 +1,213 @@
+﻿@page "/settings"
+@using ArakCoin_GUI.Data
+@using ArakCoin
+@using ArakCoin.Networking
+
+@if (!Startup.loaded) 
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>Settings</h3>
+    <br />
+    <div class="inline">
+        <p>Node Services &nbsp;</p>
+        <input type="checkbox" id="node-switch" @onclick="handleNodeToggle" @bind="nodeToggleStatus"/>
+        <label for="node-switch">Toggle Node Services</label>
+    </div>
+    
+    @if (Settings.isNode) //we can only have the option of being a miner if we're a node
+    {
+        <div class="inline">
+            <p>Background Mining &nbsp;</p>
+            <input type="checkbox" id="mining-switch" @onclick="handleMiningToggle" 
+                   @bind="miningToggleStatus" disabled="@miningToggleDisabled"/>
+            <label for="mining-switch">Toggle Background Mining</label>
+        </div>
+    }
+    
+    <hr />
+    <div class="inline">
+        <p>Node Identifier: @(new Host(Settings.nodeIp, Settings.nodePort)) &nbsp;</p>
+        <button @onclick="handleUpdateNode">Update</button>
+    </div>
+    
+    <hr />
+    <p>Host Public Key: @Settings.nodePublicKey</p>
+    <p>Host Private Key: @Settings.nodePrivateKey</p>
+    <div class="inline">
+        <button @onclick="handleManualKeypairUpdate">Manually Enter New Keypair</button> &nbsp;
+        <button @onclick="handleAutoKeypairUpdate">Automatically Generate New Keypair</button>
+    </div>   
+    
+    <hr />
+    <div class="inline">
+        <p>Min. acceptable miner fee (if miner): @Settings.minMinerFee &nbsp;</p>
+        <button @onclick="handleMinMinerFee">Update</button>
+    </div>
+    
+    <div class="inline">
+        <p>Max. mempool size (if node or miner): @Settings.maxMempoolSize &nbsp;</p>
+        <button @onclick="handleMaxMempoolSize">Update</button>
+    </div>
+}
+
+@code {
+    bool nodeToggleDisabled = false;
+    bool nodeToggleStatus = Settings.isNode;
+    
+    bool miningToggleDisabled = false;
+    bool miningToggleStatus = Settings.isMiner;
+
+    async Task handleMaxMempoolSize()
+    {
+        string newPoolString = await GuiUtilities.getPromptValue("Enter new maximum mempool size");
+        int? newPoolInt = Utilities.convertStringToInt(newPoolString);
+        if (newPoolInt is not null && newPoolInt > 0)
+        {
+            Settings.maxMempoolSize = (int)newPoolInt;
+            Settings.saveRuntimeSettingsToSettingsFile();
+        }
+    }
+    
+    async Task handleMinMinerFee()
+    {
+        string newFeeString = await GuiUtilities.getPromptValue("Enter new minimum miner fee");
+        int? newFeeInt = Utilities.convertStringToInt(newFeeString);
+        if (newFeeInt is not null && newFeeInt >= 0)
+        {
+            Settings.minMinerFee = (int)newFeeInt;
+            Settings.saveRuntimeSettingsToSettingsFile();
+        }
+    }
+    
+    async Task handleManualKeypairUpdate()
+    {
+        var pubKey = await GuiUtilities.getPromptValue("Enter the public key address for receiving coins " +
+                "to (including miner rewards). Must be Ed25519 compliant in 32-byte hex format");
+        var privKey = await GuiUtilities.getPromptValue("Enter the corresponding private key " +
+                "(this will only be stored locally, not shared). Must be Ed25519 compliant in 32-byte hex format");
+
+        //test correct keypair was entered
+        bool validated = Cryptography.testKeypair(pubKey, privKey);
+        if (validated)
+        {
+            Settings.nodePublicKey = pubKey;
+            Settings.nodePrivateKey = privKey;
+            Settings.saveRuntimeSettingsToSettingsFile();
+            GuiUtilities.guiAlert($"Entered keypair was succesfully validated");
+        }
+        else
+        {
+            GuiUtilities.guiAlert("The public and private key pairs did not pass validation");
+        }
+    }
+
+    async Task handleAutoKeypairUpdate()
+    {
+        var keypair = Cryptography.generatePublicPrivateKeyPair();
+        bool validated = Cryptography.testKeypair(keypair.publicKey, keypair.privateKey);
+        if (validated)
+        {
+            Settings.nodePublicKey = keypair.publicKey;
+            Settings.nodePrivateKey = keypair.privateKey;
+            Settings.saveRuntimeSettingsToSettingsFile();
+            GuiUtilities.guiAlert($"New keypair was succesfully validated");
+        }
+        else
+        {
+            GuiUtilities.guiAlert("The public and private key pairs did not pass validation");
+        }
+    }
+    
+    async Task handleUpdateNode()
+    {
+        string ip = await GuiUtilities.getPromptValue("Enter host ipv4 address:");
+        string port = await GuiUtilities.getPromptValue("Enter host port:");
+        if (ip is null || port is null)
+            return;
+        
+        if (!Host.isIpFormatValid(ip))
+        {
+            GuiUtilities.guiAlert("Invalid ipv4 address entered");
+            return;
+        }
+        
+        int? portInt = Utilities.convertStringToInt(port);
+        if (portInt is null || !Host.isPortFormatValid((int)portInt))
+        {
+            GuiUtilities.guiAlert("Invalid port entered");
+            return;
+        }
+
+        Settings.nodeIp = ip;
+        Settings.nodePort = (int)portInt;
+        Settings.saveRuntimeSettingsToSettingsFile();
+    }
+    
+    void handleNodeToggle()
+    {
+        if (nodeToggleDisabled)
+            return;
+        
+        nodeToggleDisabled = true;
+        miningToggleDisabled = true;
+        
+        if (Settings.isNode)
+        {
+            GlobalHandler.disableNodeServices();
+            GlobalHandler.disableMining(); //if we are not a node, we cannot be a miner either, so we disable both
+            Settings.isNode = false;
+            Settings.isMiner = false;
+        }
+        else
+        {
+            GlobalHandler.enableNodeServices();
+            Settings.isNode = true;
+        }
+        Settings.saveRuntimeSettingsToSettingsFile();
+
+        nodeToggleDisabled = false;
+        miningToggleDisabled = false;
+    }  
+    
+    void handleMiningToggle()
+    {
+        if (miningToggleDisabled)
+            return;
+        
+        miningToggleDisabled = true;
+        
+        if (Settings.isMiner)
+        {
+            GlobalHandler.disableMining();
+            Settings.isMiner = false;
+        }
+        else
+        {
+            GlobalHandler.enableMining();
+            Settings.isMiner = true;
+        }
+        Settings.saveRuntimeSettingsToSettingsFile();
+
+        miningToggleDisabled = false;
+    }
+    
+    private void Callback(object? o, string update)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void Callback(object? o, Block newBlock)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    protected override void OnInitialized()
+    {
+        //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+}
+

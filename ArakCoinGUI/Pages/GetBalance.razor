@@ -1,0 +1,104 @@
+﻿@page "/getbalance"
+@using ArakCoin_GUI.Data
+@using ArakCoin.Networking
+@using ArakCoin.Transactions
+@using ArakCoin
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>Query Balance</h3>
+
+    <div class="inline">
+        <div><p>Address: </p></div>
+        <div><input size="64" @bind="address"></div>
+    </div>
+    <button @onclick="handleGetBalance">Get Balance</button>
+    <p><em>@status</em></p>
+}
+
+@code {
+    string address;
+    string status = "";
+    bool ongoingAsync = false;
+    public static readonly object asyncLock = new object(); 
+    
+    async Task handleGetBalance()
+    {
+        lock (asyncLock)
+        {
+            if (ongoingAsync)
+                return;
+
+            ongoingAsync = true;
+        }
+
+        try
+        {
+            //retrieve balance from the local chain if we're a node
+            if (Settings.isNode)
+            {
+                GuiUtilities.guiAlert(
+                    $"Balance of {address}:\n\t{Wallet.getAddressBalance(address).ToString()} coins");
+                return;
+            }
+
+            //otherwise we must get it from the network
+            var nm = new NetworkMessage(MessageTypeEnum.GETBALANCE, address);
+            long receivedBalance = 0;
+            Host? receivedNode = null;
+            foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+            {
+                if (node == new Host(Settings.nodeIp, Settings.nodePort))
+                    continue; //don't search self
+				    
+                status = $"attempting to retrieve balance from {node}..";
+                StateHasChanged();
+                
+                var respMsg = await Communication.communicateWithNode(nm, node);
+                if (respMsg is null)
+                    continue;
+
+                //ensure received raw message is a valid integer
+                if (!Int64.TryParse(respMsg.rawMessage, out receivedBalance))
+                    continue;
+
+                receivedNode = node;
+            }
+
+            if (receivedNode is null)
+            {
+                GuiUtilities.guiAlert("Could not retrieve address balance from network..\n");
+                return;
+            }
+
+            GuiUtilities.guiAlert($"Balance of {address}:\n\t{Wallet.getAddressBalance(address).ToString()} coins");
+        }
+        finally
+        {
+            status = "";
+            ongoingAsync = false;
+            StateHasChanged();
+        }
+        
+    }
+    
+    private void Callback(object? o, string update)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    private void Callback(object? o, Block newBlock)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+    
+    protected override void OnInitialized()
+    {
+        //we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+}

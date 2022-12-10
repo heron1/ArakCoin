@@ -1,0 +1,174 @@
+﻿@page "/createtransaction"
+@using ArakCoin_GUI.Data
+@using ArakCoin.Data
+@using ArakCoin.Networking
+@using ArakCoin.Transactions
+@using ArakCoin
+@using ArakCoin_GUI.Components
+
+@inject NavigationManager NavigationManager
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>Create Transaction</h3>
+
+    <p>Balance: @GuiGlobals.lastBalance</p>
+                                       
+    <div class="inline">
+        <p>Miner fee: </p>
+        <div><input type="number" min="0" size="5" @bind="minerFee"></div>
+    </div>
+    <br />
+    @for (var i = 0; i < addressBlockIndices.Count; i++)
+    {
+        int savedIndex = i;
+        <TxAddressBlock addressNumber="@addressBlockIndices[i]" @ref="addressBlocks[savedIndex]"/>
+        @if (i < addressBlockIndices.Count - 1)
+        {
+            <br /> //newline unless we're at the final address block
+        }
+    }
+    <button @onclick="addNewAddress">Add Another Address</button>
+	<button @onclick="handleTransactionBroadcast">Create & Broadcast Transaction</button>
+	<p><em>@status</em></p>
+}
+
+@code {
+    int addressCounter = 1;
+    List<int> addressBlockIndices = new();
+    List<TxAddressBlock> addressBlocks = new();
+	long minerFee = 0;
+	string status = "";
+	bool ongoingAsync = false;
+	public static readonly object asyncLock = new object(); 
+        
+	private void Callback(object? o, string update)
+	{
+		InvokeAsync(StateHasChanged);
+	}
+	private void Callback(object? o, Block newBlock)
+	{
+		InvokeAsync(StateHasChanged);
+	}
+    
+	protected override void OnInitialized()
+	{
+		//we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
+		GlobalHandler.latestBlockUpdateEvent += Callback;
+		GuiHandler.stateUpdate += Callback;
+	}
+
+    private void addNewAddress()
+    {
+        addressBlocks.Add((new TxAddressBlock()));
+        addressBlockIndices.Add(addressCounter++);
+    }
+
+    private async Task handleTransactionBroadcast()
+    {
+	    lock (asyncLock)
+	    {
+		    if (ongoingAsync)
+			    return;
+
+		    ongoingAsync = true;
+	    }
+
+	    try
+	    {
+			//create the utxouts
+		    List<TxOut> txouts = new();
+		    foreach (var outputAddress in addressBlocks)
+		    {
+			    txouts.Add(new TxOut(outputAddress.address, outputAddress.amount));
+		    }
+
+			//create network message request
+		    UTxOut[]? receivedUtxOuts = null;
+		    Host? receivedNode = null;
+
+			//if we are a node, we can just retrieve the utxouts from the local chain, otherwise we must request
+			// the utxouts from the network
+		    if (Settings.isNode)
+		    {
+			    receivedNode = new Host(Settings.nodeIp, Settings.nodePort);
+			    receivedUtxOuts = ArakCoin.Globals.masterChain.uTxOuts;
+		    }
+		    else
+		    {
+			    var nm = new NetworkMessage(MessageTypeEnum.GETUTXOUTS, "");
+			    status = "retrieving latest utxout list from network..";
+			    StateHasChanged();
+
+			    foreach (var node in HostsManager.getNodes()) //iterate through known nodes until valid response
+			    {
+				    if (node == new Host(Settings.nodeIp, Settings.nodePort))
+					    continue; //don't search self
+				    
+				    status = $"attempting to retrieve utxouts from {node}..";
+				    StateHasChanged();
+				    
+				    var respMsg = await Communication.communicateWithNode(nm, node);
+				    if (respMsg is null)
+					    continue;
+
+				    UTxOut[]? utxouts = Serialize.deserializeJsonToContainer<UTxOut[]>(respMsg.rawMessage);
+				    if (utxouts is null)
+					    continue;
+
+				    receivedUtxOuts = utxouts;
+				    receivedNode = node;
+				    break; //utxouts received from a node
+			    }
+		    }
+
+		    if (receivedNode is null || receivedUtxOuts is null)
+		    {
+			    GuiUtilities.guiAlert($"Failed to retrieve any utxout list from the network, tx failed..");
+			    return;
+		    }
+		    status = $"received utxouts from node {receivedNode.ip} ({receivedUtxOuts.Length}) " +
+		             $"size, creating transaction..";
+		    StateHasChanged();
+
+		    var tx = TransactionFactory.createTransaction(txouts.ToArray(), Settings.nodePrivateKey,
+			    receivedUtxOuts, new List<Transaction>(), minerFee, false);
+		    if (tx is null)
+		    {
+			    GuiUtilities.guiAlert($"Transaction creation failed. Your wallet balance may not " +
+			                    $"be enough for this transaction, or you may be sending to the same address twice");
+			    return;
+		    }
+		    status = $"transaction successfully created with tx id: {tx.id}\nBroadcasting tx to network..";
+		    StateHasChanged();
+
+			//add the tx to our local mempool if we're a node
+		    if (Settings.isNode)
+			    ArakCoin.Globals.masterChain.addTransactionToMempoolGivenNodeRequirements(tx);
+
+			//we immediately broadcast the transaction as a single item in a mempool - this is because the logic
+			//of receiving new mempools and transactions should be the same at nodes. However if this client spams this
+			//ability they risk being blacklisted by nodes, the same way as a spamming node would be
+		    var broadcast = await Task.Run(() => 
+			    NetworkingManager.broadcastMempool(new List<Transaction>() { tx }));
+		    if (!broadcast)
+		    {
+			    GuiUtilities.guiAlert("Local serialization of our transaction failed. " +
+			                          "It was *not* broadcast to the network..");
+			    return;
+		    }
+		    GuiUtilities.guiAlert($"Transaction {tx.id} has been broadcast to the network..");
+		    NavigationManager.NavigateTo("/createtransaction", forceLoad: true);
+	    }
+	    finally
+	    {
+		    status = "";
+		    ongoingAsync = false;
+		    StateHasChanged();
+	    }
+    }
+}
