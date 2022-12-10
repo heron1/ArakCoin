@@ -116,7 +116,7 @@ public static class Utilities
 	public static void exceptionLog(string exceptionLog)
 	{
 		Console.WriteLine($"Exception log message: {exceptionLog}");
-		Debug.WriteLine($"Exception log message: {exceptionLog}");
+		// Debug.WriteLine($"Exception log message: {exceptionLog}");
 		Console.Error.WriteLine($"Exception log message: {exceptionLog}");
 		StringQueue.addToQueue("Exception log message: " + exceptionLog);
 

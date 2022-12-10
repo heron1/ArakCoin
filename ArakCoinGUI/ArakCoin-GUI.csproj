@@ -31,10 +31,19 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
         <DefaultLanguage>en</DefaultLanguage>
         <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
-        <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+        <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
         <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
         <GenerateTestArtifacts>True</GenerateTestArtifacts>
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+        <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+        <PackageCertificateKeyFile>ArakCoin-GUI_TemporaryKey.pfx</PackageCertificateKeyFile>
+        <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net6.0-android|AnyCPU'">
+      <PublishTrimmed>False</PublishTrimmed>
+      <RunAOTCompilation>False</RunAOTCompilation>
     </PropertyGroup>
 
     <ItemGroup>
@@ -57,12 +66,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
-      <PackageReference Include="NSec.Cryptography" Version="22.4.0" />
+      <RazorComponent Include="Components\TxAddressBlock.razor" />
     </ItemGroup>
 
     <ItemGroup>
-      <RazorComponent Include="Components\TxAddressBlock.razor" />
+      <None Remove="Properties\PublishProfiles\MSIX-win10-x642.pubxml" />
     </ItemGroup>
 
     <ItemGroup>
