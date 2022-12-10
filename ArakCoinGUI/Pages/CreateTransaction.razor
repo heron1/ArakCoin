@@ -57,6 +57,8 @@ else
     
 	protected override void OnInitialized()
 	{
+		addNewAddress();
+		
 		//we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
 		GlobalHandler.latestBlockUpdateEvent += Callback;
 		GuiHandler.stateUpdate += Callback;
