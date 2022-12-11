@@ -18,11 +18,17 @@ public class Host
     {
         //ip format check
         if (!isIpFormatValid(ip))
+        {
+            Utilities.exceptionLog("ip is invalid");
             throw new ArgumentException("ip is invalid", nameof(ip));
-        
+        }
+
         //port format check
         if (!isPortFormatValid(port))
+        {
+            Utilities.exceptionLog("port is invalid");
             throw new ArgumentException("port is invalid", nameof(port));
+        }
         
         this.ip = ip;
         this.port = port;

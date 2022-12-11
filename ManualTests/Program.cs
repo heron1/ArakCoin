@@ -48,8 +48,12 @@ namespace ManualTests
                 long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.BLOCK_REWARD;
                 long actualSupply = Wallet.getCurrentCirculatingCoinSupply(Globals.masterChain);
                 if (correctCoinSupply != actualSupply)
+                {
+                    Utilities.exceptionLog("Groundbreaking error :'( -> coin supply should be" +
+                                           $" {correctCoinSupply} but is {actualSupply}");
                     throw new Exception($"Groundbreaking error :'( -> coin supply should be" +
                                         $" {correctCoinSupply} but is {actualSupply}");
+                }
                 else
                 {
                     Utilities.log($"Correct coin supply asserted as: {actualSupply} (test passed)");

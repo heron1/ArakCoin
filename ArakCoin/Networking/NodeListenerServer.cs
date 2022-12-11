@@ -39,7 +39,10 @@ public class NodeListenerServer : IDisposable
         while (!connectionActive) //wait until the async task sets the connection as active before returning
         {
             if (timeoutTask.IsCompleted)
+            {
+                Utilities.exceptionLog("Failed to start listening server before timeout reached");
                 throw new Exception("Failed to start listening server before timeout reached");
+            }
             Utilities.sleep(10); //mini-sleep to prevent CPU spin
         }
 
