@@ -33,16 +33,23 @@ public class Block
 	}
 	
 	/**
-	 * Calculate the block hash for any given block. Returns null if the block has an invalid format
+	 * Calculate the block hash for any given block. Returns null if the block has an invalid format.
+	 * Note that if the transactionsString parameter is not null, it's assumed to represent the transactions of the
+	 * block in string format so that this need not undergo re-calculation every function call. This is useful only for
+	 * mining optimization to make it an O(1) operation. For validation, the tx string should always be calculated
+	 * from the current block transactions (ie: the transactionsString should be left at the default null value).
 	 */
-	public static string? calculateBlockHash(Block block)
+	public static string? calculateBlockHash(Block block, string? transactionsString = null)
 	{
 		if (block.transactions is null || block.prevBlockHash is null || block.index < 0)
 			return null;
 		
-		string? transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
 		if (transactionsString is null)
-			return null;
+		{
+			transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
+			if (transactionsString is null)
+				return null;
+		}
 		
 		string inputStr =
 			$"{block.index.ToString()},{transactionsString}," +
@@ -55,17 +62,19 @@ public class Block
 	/**
 	 * Calculate block hash for this block. Returns null if the block is invalid
 	 */
-	public string? calculateBlockHash()
+	public string? calculateBlockHash(string? transactionsString = null)
 	{
-		return calculateBlockHash(this);
+		return calculateBlockHash(this, transactionsString);
 	}
 
 	/**
-	 * Returns true if the hash of this block matches its difficulty or greater, otherwise false
+	 * Returns true if the hash of this block matches its difficulty or greater, otherwise false. An input transactions
+	 * string argument can be passed to pre-calculate the transactions as a string for the block. This should only
+	 * be used for mining optimization to make it an O(1) operation - it should not be used for block validation.
 	 */
-	public bool hashDifficultyMatch()
+	public bool hashDifficultyMatch(string? transactionsString = null)
 	{
-		string? hash = calculateBlockHash();
+		string? hash = calculateBlockHash(transactionsString);
 		if (hash is null)
 			return false;
 		int hashDifficulty = 0;
@@ -132,15 +141,22 @@ public class Block
 			              $"has a limit of {Protocol.MAX_TRANSACTIONS_PER_BLOCK}, cancelling..");
 			return false;
 		}
+		
+		//pre-calculate the transaction string so that mining becomes an n + O(m) instead of an O(m*n) operation, where
+		//m represents the number of iterations required to find a hash difficulty match, and n the number of
+		//transactions in the block.
+		string? transactionsString = Transaction.convertTxArrayToString(this.transactions.ToArray());
+		if (transactionsString is null)
+			return false;
 
 		Utilities.log($"Mining block #{index} with difficulty {difficulty} and " +
 		              $"starting hash {startingHash.Substring(0, 4)}...");
 
 		//now we begin the mining process
-		while (!hashDifficultyMatch())
+		while (!hashDifficultyMatch(transactionsString))
 		{
 			if (cancelMining) //block mining has been cancelled by another thread, we terminate this method
-				return hashDifficultyMatch(); 
+				return hashDifficultyMatch(transactionsString); 
 
 			long newTimestamp = Utilities.getTimestamp();
 			if (timestamp != newTimestamp)
