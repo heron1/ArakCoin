@@ -25,6 +25,16 @@ else
                    @bind="miningToggleStatus" disabled="@miningToggleDisabled"/>
             <label for="mining-switch">Toggle Background Mining</label>
         </div>
+        
+        @if (Settings.isMiner) //we only have the option of parallel mining if we're a miner
+        {
+            <div class="inline">
+                <p>Parallel Mining &nbsp;</p>
+                <input type="checkbox" id="parallel-mining-switch" @onclick="handleParallelMiningToggle" 
+                       @bind="parallelMiningToggleStatus" disabled="@parallelMiningToggleDisabled"/>
+                <label for="parallel-mining-switch">Toggle Parallel Mining</label>
+            </div> 
+        }
     }
     
     <hr />
@@ -59,6 +69,9 @@ else
     
     bool miningToggleDisabled = false;
     bool miningToggleStatus = Settings.isMiner;
+
+    bool parallelMiningToggleDisabled = false;
+    bool parallelMiningToggleStatus = Settings.allowParallelCPUMining;
 
     async Task handleMaxMempoolSize()
     {
@@ -192,6 +205,30 @@ else
         Settings.saveRuntimeSettingsToSettingsFile();
 
         miningToggleDisabled = false;
+    }
+
+    void handleParallelMiningToggle()
+    {
+        if (parallelMiningToggleDisabled)
+            return;
+        
+        parallelMiningToggleDisabled = true;
+
+        if (Settings.allowParallelCPUMining)
+        {
+            GlobalHandler.disableMining();
+            Settings.allowParallelCPUMining = false;
+            GlobalHandler.enableMining();
+        }
+        else
+        {
+            GlobalHandler.disableMining();
+            Settings.allowParallelCPUMining = true;
+            GlobalHandler.enableMining();
+        }
+        Settings.saveRuntimeSettingsToSettingsFile();
+        
+        parallelMiningToggleDisabled = false;
     }
     
     private void Callback(object? o, string update)

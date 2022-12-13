@@ -16,6 +16,8 @@ public static class AsyncTasks
     {
         Globals.miningIsBeingCancelled = false;
         bool blockMined = false; //for parallel operations, keeps track of whether a block has been mined
+        
+        Utilities.log("Mining service started..");
 
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
