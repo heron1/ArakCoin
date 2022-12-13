@@ -79,8 +79,8 @@ public static class GlobalHandler
                       $" {receivingNode}");
         
         //stop current mining if it's occuring on a now outdated block
-        if (Globals.nextBlock is not null)
-            Globals.nextBlock.cancelMining = true;
+        foreach (var block in Globals.nextBlocks) 
+            block.cancelMining = true;
         
         handleMasterBlockchainUpdate();
     }

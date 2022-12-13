@@ -68,12 +68,29 @@ public static class Handlers
 				    cliLog("You've selected for this host be a node. Will this node also be a miner? Type (y/n)");
 				    input = getInput();
 			    }
+			    
+			    if (input == "y")
+				    Settings.isMiner = true;
+			    else
+				    Settings.isMiner = false;
 		    }
-		    if (input == "y")
-			    Settings.isMiner = true;
-		    else
-			    Settings.isMiner = false;
-			
+
+		    if (Settings.isMiner)
+		    {
+			    input = "";
+			    while (input != "y" && input != "n")
+			    {
+				    cliLog("You've selected for this host be a miner. Allow parallel CPU mining (intensive)? " +
+				           "Type (y/n)");
+				    input = getInput();
+			    }
+			    
+			    if (input == "y")
+				    Settings.allowParallelCPUMining = true;
+			    else
+				    Settings.allowParallelCPUMining = false;
+		    }
+		    
 		    //if this host will be a node, we needs its network identifier for incoming sockets connections
 		    if (Settings.isNode)
 		    {

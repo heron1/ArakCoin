@@ -12,6 +12,7 @@ public class DataIntegrationTests
     [SetUp]
     public void Setup()
     {
+        Settings.allowParallelCPUMining = true; //all tests should be tested with parallel mining enabled
         Settings.nodePublicKey = testPublicKey;
     }
     

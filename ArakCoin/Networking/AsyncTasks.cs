@@ -15,6 +15,7 @@ public static class AsyncTasks
     public static CancellationTokenSource mineBlocksAsync()
     {
         Globals.miningIsBeingCancelled = false;
+        bool blockMined = false; //for parallel operations, keeps track of whether a block has been mined
 
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken cancelToken = cancellationTokenSource.Token;
@@ -22,33 +23,116 @@ public static class AsyncTasks
         {
             while (true)
             {
-                lock (Globals.asyncMiningLock)
+                if (!cancelToken.IsCancellationRequested && !Globals.miningIsBeingCancelled)
                 {
-                    if (!cancelToken.IsCancellationRequested && !Globals.miningIsBeingCancelled)
+                    //clear any currently mining blocks
+                    lock (Globals.nextBlocksLock)
                     {
-                        //create and begin mining the next block on this node's own local master chain
-                        Transaction[] toBeMinedTx = Globals.masterChain.getTxesFromMempoolForBlockMine();
-                        Globals.nextBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx);
-                        if (!Blockchain.isGenesisBlock(Globals.nextBlock))
-                            Globals.nextBlock.mineBlock();
-
-                        //if the block was successfully mined and added to the local chain, broadcast it
-                        if (Globals.masterChain.addValidBlock(Globals.nextBlock))
+                        Globals.nextBlocks.Clear();
+                    }
+                    
+                    //initialize values
+                    int threads = Settings.maxParallelMiningCPUThreadCount;
+                    long N = long.MaxValue;
+                    
+                    /*
+                     * create and begin mining the next block on this node's own local master chain
+                     */
+                    
+                    //retrieve alloweable transactions from the mempool
+                    Transaction[] toBeMinedTx = Globals.masterChain.getTxesFromMempoolForBlockMine();
+                    
+                    if (!Settings.allowParallelCPUMining) //handle logic for non-parallel mining
+                    {
+                        Block nextBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx);
+                        lock (Globals.nextBlocksLock)
                         {
-                            Utilities.log($"This node mined block #{Globals.nextBlock.index}, broadcasting it..");
-                            NetworkingManager.broadcastNextValidBlock(Globals.nextBlock);
-                            GlobalHandler.handleMasterBlockchainUpdate(); //handle the blockchain update
+                            Globals.nextBlocks.Add(nextBlock);
+                        }
+                        if (!Blockchain.isGenesisBlock(nextBlock))
+                            nextBlock.mineBlock();
+                        Globals.nextMinedBlock = nextBlock;
+                    }
+                    else //handle logic for parallel mining
+                    {
+                        //first test the next block isn't the genesis block, otherwise we stop at it
+                        Block nextBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx);
+                        lock (Globals.nextBlocksLock)
+                        {
+                            Globals.nextBlocks.Add(nextBlock);
+                        }
+                        if (!Blockchain.isGenesisBlock(nextBlock))
+                        {
+                            //block isn't the genesis block. Clear the nextBlocks and begin parallel mining
+                            lock (Globals.nextBlocksLock)
+                            {
+                                Globals.nextBlocks.Clear();
+                            }
+
+                            //parallelism occurs within the lambda expression of this function
+                            Parallel.For(0, Settings.maxParallelMiningCPUThreadCount, (long i) =>
+                            {
+                                //if block is already mined, exit this thread
+                                if (blockMined) 
+                                    return;
+                                
+                                //set up the parallel block and its nonce range
+                                long startNonce = (N / threads * i);
+                                long endNonce = (N / threads * (i + 1));
+                                Block parallelBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx,
+                                    startNonce, endNonce, true);
+                                
+                                lock (Globals.nextBlocksLock)
+                                {
+                                    Globals.nextBlocks.Add(parallelBlock);
+                                }
+                                parallelBlock.mineBlock();
+                                
+                                //the first thread to reach here must have been the one to mine its block first,
+                                //it can cancel the mining for all other threads
+                                lock (Globals.asyncMiningLock)
+                                {
+                                    if (blockMined)
+                                        return; //this wasn't the first thread
+
+                                    blockMined = true;
+
+                                    lock (Globals.nextBlocksLock)
+                                    {
+                                        foreach (var block in Globals.nextBlocks)
+                                            block.cancelMining = true;
+                                    }
+                                    
+                                    Globals.nextMinedBlock = parallelBlock;
+                                }
+                            });
                         }
                         else
                         {
-                            Utilities.log("Mining failed (chain most likely updated externally)");
+                            //block was the genesis block. It's the next valid block
+                            Globals.nextMinedBlock = nextBlock;
                         }
+                    }
+
+                    blockMined = false; //reset the block mined tracker for parallelism
+
+                    //if the block was successfully mined and added to the local chain, broadcast it
+                    if (Globals.nextMinedBlock is not null && 
+                        Globals.masterChain.addValidBlock(Globals.nextMinedBlock))
+                    {
+                        Utilities.log($"This node mined block #{Globals.nextMinedBlock.index}, broadcasting it..");
+                        NetworkingManager.broadcastNextValidBlock(Globals.nextMinedBlock);
+                        GlobalHandler.handleMasterBlockchainUpdate(); //handle the blockchain update
                     }
                     else
                     {
-                        Utilities.log("Mining stopped via interrupt..");
-                        break;
+                        Utilities.log("Mining failed (chain most likely updated externally)");
                     }
+                }
+                else
+                {
+                    Utilities.log("Mining stopped via interrupt..");
+                    break;
                 }
             }
         }, cancelToken);
@@ -61,9 +145,12 @@ public static class AsyncTasks
      */
     public static void cancelMineBlocksAsync(CancellationTokenSource cancelTokenSource)
     {
-        Globals.miningIsBeingCancelled = true;
-        if (Globals.nextBlock is not null)
-            Globals.nextBlock.cancelMining = true;
+        lock (Globals.nextBlocksLock)
+        {
+            Globals.miningIsBeingCancelled = true;
+            foreach (var block in Globals.nextBlocks)
+                    block.cancelMining = true;
+        }
         
         //we acquire a lock here not because the .Cancel() method isn't atomic, but because we should wait for
         //an async mining thread to release its lock (indicating it's done for that block mine) before cancelling.

@@ -18,6 +18,8 @@ public class BlockchainIntegration
 	[SetUp]
 	public void Setup()
 	{
+		Settings.allowParallelCPUMining = true; //all tests should be tested with parallel mining enabled
+
 		// put blockchain protocol settings to low values integration tests so they don't take too long
 		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 50;
 		Protocol.BLOCK_INTERVAL_SECONDS = 1;
@@ -128,7 +130,7 @@ public class BlockchainIntegration
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
 
 		// normal block but with a timestamp in the future equal to half of the time variance allowance
-		nextBlock = BlockFactory.createNewBlock(bchain, null);
+		nextBlock = BlockFactory.createNewBlock(bchain);
 		nextBlock.timestamp += Protocol.DIFFERING_TIME_ALLOWANCE / 2;
 
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test

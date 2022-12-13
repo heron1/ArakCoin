@@ -21,6 +21,8 @@ public class BlockchainFunctionalTests
 	[SetUp]
 	public void Setup()
 	{
+		Settings.allowParallelCPUMining = true; //all tests should be tested with parallel mining enabled
+
 		bchain = new Blockchain();
 	}
 	

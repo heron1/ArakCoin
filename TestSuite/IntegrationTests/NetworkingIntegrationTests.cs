@@ -60,6 +60,7 @@ public class NetworkingIntegrationTests
         host = new Host(Settings.nodeIp, Settings.nodePort);
 
         ArakCoin.Globals.masterChain = new Blockchain();
+        Settings.allowParallelCPUMining = true; //all tests should be tested with parallel mining enabled
     }
     
     [Test]
@@ -394,7 +395,7 @@ public class NetworkingIntegrationTests
     [Test]
     public async Task Temp()
     {
-
+        
 
     }
 }

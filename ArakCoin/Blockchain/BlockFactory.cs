@@ -4,7 +4,8 @@ namespace ArakCoin;
 
 public static class BlockFactory
 {
-	public static Block createNewBlock(Blockchain blockchain, Transaction[]? transactions = null)
+	public static Block createNewBlock(Blockchain blockchain, Transaction[]? transactions = null, 
+		long startingNonce = 1, long endingNonceIfParallel = long.MaxValue, bool isParallelBlock = false)
 	{
 		lock (blockchain.blockChainLock)
 		{
@@ -15,7 +16,8 @@ public static class BlockFactory
 				transactions = new Transaction[] {};
 
 			return new Block(blockchain.getLength() + 1, transactions.ToArray(), Utilities.getTimestamp(),
-				blockchain.getLastBlock().calculateBlockHash(), blockchain.currentDifficulty, 1);
+				blockchain.getLastBlock().calculateBlockHash(), blockchain.currentDifficulty, startingNonce, 
+				endingNonceIfParallel, isParallelBlock);
 		}
 	}
 

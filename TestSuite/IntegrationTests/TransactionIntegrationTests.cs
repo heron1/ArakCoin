@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using ArakCoin;
+using ArakCoin.Networking;
 using ArakCoin.Transactions;
 
 namespace TestSuite.IntegrationTests;
@@ -14,6 +15,8 @@ public class TransactionIntegration
 	[SetUp]
 	public void Setup()
 	{
+		Settings.allowParallelCPUMining = true; //all tests should be tested with parallel mining enabled
+
 		// put blockchain protocol settings to low values integration tests so they don't take too long
 		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 50;
 		Protocol.BLOCK_INTERVAL_SECONDS = 1;
@@ -836,10 +839,13 @@ public class TransactionIntegration
 		Assert.IsTrue(bchain.getLastBlock().transactions[1].txOuts[0].amount == 3);
 	}
 	
+	static long iters = 0;
+		
 	[Test]
 	public void Temp()
 	{
-		
 
 	}
+
+	
 }

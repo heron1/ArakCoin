@@ -15,7 +15,7 @@ public static class Globals
     
     //whether the mining process is undergoing a cancellation process
     public static bool miningIsBeingCancelled = false;
-    
+
     //the global node listening server
     public static NodeListenerServer nodeListener = new NodeListenerServer();
     
@@ -28,6 +28,13 @@ public static class Globals
     //global async mempool sharing cancellation token
     public static CancellationTokenSource mempoolCancelToken = new CancellationTokenSource();
 
-    //the block that is currently being mined locally for the main blockchain at this node (if applicable)
-    public static Block? nextBlock = null;
+    //lock for accessing the nextBlocks container
+    public static readonly object nextBlocksLock = new object(); 
+    
+    //the blocks that are currently being mined locally for the main blockchain at this node (if applicable). Note that
+    //if parallel mining is disabled, then this list will only contain a single block.
+    public static readonly List<Block> nextBlocks = new List<Block>();
+
+    //keep track of the local next mined block
+    public static Block? nextMinedBlock;
 }
