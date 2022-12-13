@@ -80,9 +80,8 @@ public static class AsyncTasks
                                 
                                 //set up the parallel block and its nonce range
                                 long startNonce = (N / threads * i);
-                                long endNonce = (N / threads * (i + 1));
                                 Block parallelBlock = BlockFactory.createNewBlock(Globals.masterChain, toBeMinedTx,
-                                    startNonce, endNonce, true);
+                                    startNonce);
                                 
                                 lock (Globals.nextBlocksLock)
                                 {

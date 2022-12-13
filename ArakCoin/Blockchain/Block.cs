@@ -19,15 +19,13 @@ public class Block
 	public bool cancelMining = false; //allow a thread to cancel the mining of this block
 	private long startingMineNonce = 0; //for mining operations, always begin at this nonce. Useful for mining
 									   //parallelism where different threads may begin at different nonces
-	private long endingNonceIfParallel;
-	private bool isParallelBlock;
 									   
 	/**
 	 * If the isParallelBlock parameter is set to true (default false), then if this block is being mined, it will stop
 	 * mining and return once endingNonceIfParallel equals the nonce. This is only useful for parallel mining
 	 */
 	public Block(int index, Transaction[]? transactions, long timestamp, string prevBlockHash, int difficulty, 
-		long nonce, long endingNonceIfParallel = long.MaxValue, bool isParallelBlock = false)
+		long nonce)
 	{
 		if (transactions is null)
 			transactions = new Transaction[] { };
@@ -40,8 +38,6 @@ public class Block
 		this.prevBlockHash = prevBlockHash;
 		this.difficulty = difficulty;
 		this.nonce = nonce;
-		this.endingNonceIfParallel = endingNonceIfParallel;
-		this.isParallelBlock = isParallelBlock;
 	}
 	
 	/**
@@ -177,9 +173,7 @@ public class Block
 				nonce = startingMineNonce;
 			}
 
-			//increase the nonce. If the block is parallel and the ending nonce is reached, we return false
-			if (++nonce >= endingNonceIfParallel && isParallelBlock) 
-				return false;
+			nonce++;
 		}
 
 		return true; // block has been mined

@@ -200,19 +200,11 @@ public class Settings
 	[JsonProperty] public static bool allowParallelCPUMining = false;
 
 	/**
-	 * The maximum number of threads that can be created for parallel mining on the CPU. This should be set to a value
-	 * much higher than the CPU core count so that the .NET runtime has maximum flexibility in allocating threads as
-	 * needed. Note that the runtime is very unlikely to create more threads than needed. Eg: For a 8 core processor,
-	 * only 8 threads (or 16 with hyperthreading) will likely be created, even if this value is set to a much higher
-	 * number. Only set this value to a lower number than the core count if the system shouldn't consume maximum CPU
-	 * resources for mining operations (ie: if it's being used for other purposes besides this program). For a miner
-	 * that is just running this program in the background, setting this to half the CPU core count may provide the
-	 * optimal tradeoff of parallelism versus retaining CPU cycles for other processes. Note however the .NET runtime
-	 * is very good at managing threads if other processes are contending for CPU time, so most of the time this can
-	 * still be left at a higher number than the core count, even if desiring multitasking.
+	 * The maximum number of threads that can be created for parallel mining on the CPU. It's recommended to leave
+	 * this at the default value as the number of logical processors on the device.
 	 */
 	[JsonProperty] 
-	public static int maxParallelMiningCPUThreadCount = 30;
+	public static int maxParallelMiningCPUThreadCount = Environment.ProcessorCount;
 	
 	/**
 	 * This setting is only applicable if the isNode property is set to true.
