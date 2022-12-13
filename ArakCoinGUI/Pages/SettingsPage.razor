@@ -25,17 +25,17 @@ else
                    @bind="miningToggleStatus" disabled="@miningToggleDisabled"/>
             <label for="mining-switch">Toggle Background Mining</label>
         </div>
-        
-        @if (Settings.isMiner) //we only have the option of parallel mining if we're a miner
-        {
-            <div class="inline">
-                <p>Parallel Mining &nbsp;</p>
-                <input type="checkbox" id="parallel-mining-switch" @onclick="handleParallelMiningToggle" 
-                       @bind="parallelMiningToggleStatus" disabled="@parallelMiningToggleDisabled"/>
-                <label for="parallel-mining-switch">Toggle Parallel Mining</label>
-            </div> 
-        }
     }
+    
+    @if (Settings.isMiner && Settings.isNode) //we only have the option of parallel mining if we're a miner
+            {
+                <div class="inline">
+                    <p>Parallel Mining &nbsp;</p>
+                    <input type="checkbox" id="parallel-mining-switch" @onclick="handleParallelMiningToggle" 
+                           @bind="parallelMiningToggleStatus" disabled="@parallelMiningToggleDisabled"/>
+                    <label for="parallel-mining-switch">Toggle Parallel Mining</label>
+                </div> 
+            }
     
     <hr />
     <div class="inline">
@@ -173,6 +173,7 @@ else
             GlobalHandler.disableMining(); //if we are not a node, we cannot be a miner either, so we disable both
             Settings.isNode = false;
             Settings.isMiner = false;
+            miningToggleStatus = false;
         }
         else
         {
