@@ -64,8 +64,8 @@ public static class Cryptography
 	}
 
 	/**
-	 * Sign the input data with the given private key. Returns a string representing the signed data. If the operation fails,
-	 * will return null
+	 * Sign the input data with the given private key. Returns a string representing the signed data.
+	 * If the operation fails, will return null
 	 */
 	public static string? signData(string data, string privateKey)
 	{

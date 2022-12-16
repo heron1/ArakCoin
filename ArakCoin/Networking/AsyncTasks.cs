@@ -1,4 +1,5 @@
 ﻿using ArakCoin.Transactions;
+// ReSharper disable AccessToModifiedClosure
 
 namespace ArakCoin.Networking;
 

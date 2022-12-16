@@ -11,6 +11,8 @@ on both Windows & Linux by hosts wishing to be either clients or nodes.
 A GUI also exists for Windows 10+. It's recommended to use the pre-built binary for installation.
 
 # Binary Installation instructions (recommended)
+*Note*: For now, please compile from source (instructions in next section) for the most up to date build, as many changes are being pushed at the moment and the binaries will be outdated.
+
 Currently a command line UI exists for both Windows & Linux, and a GUI for Windows 10+.
 
 Download corresponding pre-built binary package from: https://github.com/heron1/ArakCoin/releases/tag/release-prototype
