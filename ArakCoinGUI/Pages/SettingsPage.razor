@@ -102,6 +102,9 @@ else
         var privKey = await GuiUtilities.getPromptValue("Enter the corresponding private key " +
                 "(this will only be stored locally, not shared). Must be Ed25519 compliant in 32-byte hex format");
 
+        if (pubKey is null || privKey is null)
+            return;
+        
         //test correct keypair was entered
         bool validated = Cryptography.testKeypair(pubKey, privKey);
         if (validated)
