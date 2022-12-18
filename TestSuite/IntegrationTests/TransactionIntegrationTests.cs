@@ -839,8 +839,6 @@ public class TransactionIntegration
 		Assert.IsTrue(bchain.getLastBlock().transactions[1].txOuts[0].amount == 3);
 	}
 	
-	static long iters = 0;
-		
 	[Test]
 	public void Temp()
 	{
