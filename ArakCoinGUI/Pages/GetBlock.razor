@@ -85,6 +85,7 @@ else
             vb.Append($"Block {retrievedBlock.index} successfully retrieved " +
                       $"(difficulty {retrievedBlock.difficulty}):\n" +
                       $"Block hash: {retrievedBlock.calculateBlockHash()}\n" +
+                      $"Merkle root: {retrievedBlock.merkleRoot}\n" +
                       $"{minedByString}" +
                       $"Nonce: {retrievedBlock.nonce}, Timestamp: {retrievedBlock.timestamp}\n" +
                       $"Previous block hash: {retrievedBlock.prevBlockHash}\n" +

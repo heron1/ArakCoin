@@ -1,8 +1,9 @@
 ﻿namespace ArakCoin.Data;
 
 /**
- * A helper class for accessing elements in a binary tree that is represented as a standard array. Will return null
- * if the input node cannot be found within the Binary Tree container, or the desired return node doesn't exist
+ * A helper class for accessing elements in a binary tree that is represented as a standard array. Methods will
+ * return null if the input node cannot be found within the Binary Tree container, or the desired return node
+ * doesn't exist
  */
 public static class BinaryTreeArrayHelpers
 {

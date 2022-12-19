@@ -281,6 +281,8 @@ public class MerkleTreeIntegrationTests
     {
         //Create a blockchain, mine some coins
         Blockchain bchain = new Blockchain();
+        ArakCoin.Globals.masterChain = bchain;
+
         for (int i = 0; i < 20; i++)
         {
             BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
@@ -295,7 +297,6 @@ public class MerkleTreeIntegrationTests
         }
         BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
         Assert.IsTrue(bchain.getLastBlock().transactions.Length == 9); //should be 9 transactions we will test
-        ArakCoin.Globals.masterChain = bchain;
 
         var merkleRoot = bchain.getLastBlock().merkleRoot; //this is the root our SPV's should derive
         
@@ -345,6 +346,20 @@ public class MerkleTreeIntegrationTests
         calculatedRootFromMinimalHashes =
             MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(desiredTxToVerify, minimalHashes);
         Assert.IsTrue(calculatedRootFromMinimalHashes == merkleRoot);
+        
+        //Test 5 -
+        //For a block with only 1tx (ie: the coinbase tx), everything should still work. We additionally assert that
+        //this coinbase tx id is in fact equivalent to the block's merkle root
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //mine the previous tx
+        BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //no new regular txes
+        Assert.IsTrue(bchain.getLastBlock().transactions.Length == 1); //only 1 coinbase tx should be present
+        merkleRoot = bchain.getLastBlock().merkleRoot;
+        desiredTxToVerify = bchain.getLastBlock().transactions[0];
+        minimalHashes = MerkleFunctions.calculateMinimalVerificationHashesFromTx(desiredTxToVerify);
+        calculatedRootFromMinimalHashes =
+            MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(desiredTxToVerify, minimalHashes);
+        Assert.IsTrue(calculatedRootFromMinimalHashes == merkleRoot);
+        Assert.IsTrue(desiredTxToVerify.id == bchain.getLastBlock().merkleRoot);
     }
     
     [Test]

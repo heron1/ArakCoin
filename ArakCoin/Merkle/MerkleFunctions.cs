@@ -129,18 +129,8 @@ public static class MerkleFunctions
 
 		List<SPVMerkleHash> merkleHashes = new(); //the minimal merkle hashes to be sent to the client we will build
 
-		//first check for the edge case that the input transaction id is in fact the merkle root. This will only
-		//occur if it's the only transaction in the block
-		// if (tx.id == foundBlock.merkleRoot)
-		// 	return merkleHashes.ToArray();
-
 		//we build the tree, and populate the merkleHashes
 		string[] merkleTree = buildMerkleTree(foundBlock.transactions);
-		
-		// var sibling = BinaryTreeArrayHelpers.getSibling(tx.id, merkleTree);
-		//if there is no initial sibling, and the tx is not the root, then it doesn't exist in the tree
-		// if (sibling is null) 
-		// 	return null; 
 		
 		// merkleHashes.Add(new SPVMerkleHash(sibling.Value.node, sibling.Value.position));
 		string lastNode = tx.id;

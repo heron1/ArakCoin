@@ -43,6 +43,7 @@ namespace ManualTests
             }
 
             //assert the coin supply from utxouts matches the intended total block mining rewards
+            //Also assert blockchain is valid
             lock (Globals.masterChain.blockChainLock)
             {
                 long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.BLOCK_REWARD;
@@ -57,6 +58,11 @@ namespace ManualTests
                 else
                 {
                     Utilities.log($"Correct coin supply asserted as: {actualSupply} (test passed)");
+                }
+
+                if (!Blockchain.isBlockchainValid(Globals.masterChain))
+                {
+                    throw new Exception($"Blockchain with height {Globals.masterChain.getLength()} is not valid");
                 }
             }
         }
