@@ -288,6 +288,10 @@ public class Blockchain
 			if (!Transaction.isValidTransaction(tx, uTxOuts))
 				return false;
 		}
+		
+		//lastly we must validate that the merkleRoot is correctly derived from the block transactions
+		if (MerkleFunctions.getMerkleRoot(block.transactions) != block.merkleRoot)
+			return false;
 
 		return true;
 	}

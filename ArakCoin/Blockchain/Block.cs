@@ -1,4 +1,5 @@
-﻿using ArakCoin.Transactions;
+﻿using ArakCoin.Data;
+using ArakCoin.Transactions;
 
 namespace ArakCoin;
 
@@ -9,7 +10,7 @@ public class Block
 {
 	//block header data fields that contribute to its hash
 	public readonly int index;
-	public string? merkleRoot = null; //block has an invalid hash until its merkleRoot is calculated
+	public string merkleRoot;
 	public long timestamp;
 	public string prevBlockHash;
 	public int difficulty;
@@ -50,26 +51,25 @@ public class Block
 	 * mining optimization to make it an O(1) operation. For validation, the merkle root should always be calculated
 	 * from the current block transactions (ie: the merkleRoot should be left at the default null value).
 	 */
-	public static string? calculateBlockHash(Block block, string? merkleRoot = null)
+	public static string? calculateBlockHash(Block block, string? merkleRootLocal = null)
 	{
 		if (block.transactions is null || block.prevBlockHash is null || block.index < 0)
 			return null;
 		
-		if (merkleRoot is null)
+		if (merkleRootLocal is null && block.transactions.Length > 0)
 		{
-			//first ensure every transaction in the block is valid
+			//first ensure every transaction in the block has a matching txid
 			foreach (var tx in block.transactions)
 			{
-				
+				if (tx.id is null || Transaction.getTxId(tx) != tx.id)
+					return null;
 			}
-			
-			merkleRoot = Transaction.convertTxArrayToString(block.transactions.ToArray());
-			if (merkleRoot is null)
-				return null;
+
+			merkleRootLocal = MerkleFunctions.getMerkleRoot(block.transactions);
 		}
-		
+
 		string inputStr =
-			$"{block.index.ToString()},{merkleRoot}," +
+			$"{block.index.ToString()},{merkleRootLocal}," +
 			$"{block.timestamp.ToString()}," +
 			$"{block.prevBlockHash.ToString()},{block.difficulty.ToString()},{block.nonce.ToString()}";
 
@@ -79,9 +79,9 @@ public class Block
 	/**
 	 * Calculate block hash for this block. Returns null if the block is invalid
 	 */
-	public string? calculateBlockHash(string? transactionsString = null)
+	public string? calculateBlockHash(string? merkleRoot = null)
 	{
-		return calculateBlockHash(this, transactionsString);
+		return calculateBlockHash(this, merkleRoot);
 	}
 
 	/**
@@ -89,9 +89,9 @@ public class Block
 	 * string argument can be passed to pre-calculate the transactions as a string for the block. This should only
 	 * be used for mining optimization to make it an O(1) operation - it should not be used for block validation.
 	 */
-	public bool hashDifficultyMatch(string? transactionsString = null)
+	public bool hashDifficultyMatch(string? merkleRoot = null)
 	{
-		string? hash = calculateBlockHash(transactionsString);
+		string? hash = calculateBlockHash(merkleRoot);
 		if (hash is null)
 			return false;
 		int hashDifficulty = 0;
@@ -159,21 +159,18 @@ public class Block
 			return false;
 		}
 		
-		//pre-calculate the transaction string so that mining becomes an n + O(m) instead of an O(m*n) operation, where
+		//pre-calculate the merkle root so that mining becomes an n + O(m) instead of an O(m*n) operation, where
 		//m represents the number of iterations required to find a hash difficulty match, and n the number of
 		//transactions in the block.
-		string? transactionsString = Transaction.convertTxArrayToString(this.transactions.ToArray());
-		if (transactionsString is null)
-			return false;
-
+		string merkleRootLocal = MerkleFunctions.getMerkleRoot(this.transactions);
 		Utilities.log($"Mining block #{index} with difficulty {difficulty} and " +
 		              $"starting hash {startingHash.Substring(0, 4)}...");
 
 		//now we begin the mining process
-		while (!hashDifficultyMatch(transactionsString))
+		while (!hashDifficultyMatch(merkleRootLocal))
 		{
 			if (cancelMining) //block mining has been cancelled by another thread, we terminate this method
-				return hashDifficultyMatch(transactionsString); 
+				return hashDifficultyMatch(merkleRootLocal); 
 
 			long newTimestamp = Utilities.getTimestamp();
 			if (timestamp != newTimestamp)
@@ -185,6 +182,8 @@ public class Block
 			nonce++;
 		}
 
+		this.merkleRoot = merkleRootLocal; //update the merkle root
+		
 		return true; // block has been mined
 	}
 

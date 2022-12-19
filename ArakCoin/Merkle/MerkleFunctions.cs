@@ -17,11 +17,17 @@ public static class MerkleFunctions
 	    if (blockTxes.Length == 1)
 		    return new string[] { blockTxes[0].id };
 	    
+	    //check there is at least a single transaction, otherwise we return an empty string list for the tree
+	    if (blockTxes.Length == 0)
+		    return new string[] {};
+	    
 	    List<List<string?>> merkleLevels = new();
 	    List<string?> merkleLevel = new();
 	    List<string?> nextMerkleLevel = new();
 	    foreach (var tx in blockTxes)
 	    {
+		    if (tx is null || tx.id is null)
+			    return new string[] {}; //return an empty tree if any tx is lacking an id
 		    merkleLevel.Add(tx.id);
 	    }
 	    //we must populate null values into the base merkleLevel until its length is a number that is a power of 2.
@@ -42,8 +48,8 @@ public static class MerkleFunctions
 			    }
 			    else
 			    {
-				    //if no sibling, we hash the current hash with this iteration
-				    nextMerkleLevel.Add(Utilities.calculateSHA256Hash(merkleLevel[i] + i));
+				    //if no sibling, we pass up the current hash
+				    nextMerkleLevel.Add(merkleLevel[i]);
 			    }
 		    }
                                      
@@ -78,7 +84,10 @@ public static class MerkleFunctions
 	 * Calculate the merkle root from the given merkle tree. This is an O(1) operation
 	 */
     public static string getMerkleRoot(string[] merkleTree)
-    {
+	{
+		if (merkleTree.Length == 0)
+			return ""; //return an empty string if no elements in the merkle tree
+		
 	    return merkleTree[0]; //the first element of the merkle tree is the merkle root
     }
 
@@ -155,9 +164,35 @@ public static class MerkleFunctions
 				return null; //a sibling should never be null
 			
 			//add the sibling to the minimal required hashes to calculate the merkle root
-			merkleHashes.Add(new SPVMerkleHash(sibling.Value.node, sibling.Value.position));
+			merkleHashes.Add(new SPVMerkleHash(sibling.Value.node, sibling.Value.position, (int)blockIndex));
 			
 			lastNode = parent; //we move up the tree
 		}
+	}
+
+	/**
+	 * Given our desired transaction to validate, and an ordered container of merkle hashes
+	 * (within the SPVMerkleHash object), recursively calculate the hashes to derive the merkle root of the
+	 * full merkle tree, even though it's only partially known from the spvMerkleHashes
+	 */
+	public static string calculateMerkleRootFromMinimalVerificationHashes(
+		Transaction tx, SPVMerkleHash[] spvMerkleHashes)
+	{
+		if (tx.id is null)
+			return "";
+		
+		string hashBuilder = tx.id;
+
+		for (int i = 0; i < spvMerkleHashes.Length; i++)
+		{
+			//determine side for the calculation, and concatenate the two hashes
+			string concatenatedHash = spvMerkleHashes[i].siblingSide == 0 ? 
+				$"{spvMerkleHashes[i].hash}{hashBuilder}" : 
+				$"{hashBuilder}{spvMerkleHashes[i].hash}";
+
+			hashBuilder = Utilities.calculateSHA256Hash(concatenatedHash);
+		}
+
+		return hashBuilder; //our purported merkle root
 	}
 }

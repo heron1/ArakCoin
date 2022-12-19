@@ -206,34 +206,151 @@ public class MerkleTreeIntegrationTests
         Assert.IsTrue(BinaryTreeArrayHelpers.getParent<string>("9", sortedBinaryTreeOdd) == "4");
         Assert.IsTrue(BinaryTreeArrayHelpers.getParent<string>("100000000", sortedBinaryTreeOdd) is null);
     }
-    
+
     [Test]
-    public void Temp()
+    public void testMerkleRootGeneration()
     {
-        Protocol.MAX_TRANSACTIONS_PER_BLOCK = 100000;
-        //first create a blockchain and mine some coins
+        //TEST 1 - Odd transactions
+        //we will create an array of 8 dummy transactions, and assert the merkle root generated is correct
+        Transaction[] dummyTxes = new Transaction[8];
+        //the tx id's will be "0","1",...,"7"
+        for (int i = 0; i < 8; i++)
+        {
+            dummyTxes[i] = new Transaction(i.ToString(), new TxIn[] { }, new TxOut[] { });
+        }
+
+        //the automaticly built merkle root
+        var automaticRoot = MerkleFunctions.getMerkleRoot(dummyTxes);
+        
+        //We now begin our own manual build.
+        //First, combine the low level txes into a merkle level
+        List<string> merkleLevel1 = new();
+        merkleLevel1.Add(Utilities.calculateSHA256Hash(dummyTxes[0].id + dummyTxes[1].id));
+        merkleLevel1.Add(Utilities.calculateSHA256Hash(dummyTxes[2].id + dummyTxes[3].id));
+        merkleLevel1.Add(Utilities.calculateSHA256Hash(dummyTxes[4].id + dummyTxes[5].id));
+        merkleLevel1.Add(Utilities.calculateSHA256Hash(dummyTxes[6].id + dummyTxes[7].id));
+        List<string> merkleLevel2 = new();
+        merkleLevel2.Add(Utilities.calculateSHA256Hash(merkleLevel1[0] + merkleLevel1[1]));
+        merkleLevel2.Add(Utilities.calculateSHA256Hash(merkleLevel1[2] + merkleLevel1[3]));
+        string merkleRoot = Utilities.calculateSHA256Hash(merkleLevel2[0] + merkleLevel2[1]);
+        
+        //now assert our manually generated merkle root is the same as the automatic one
+        Assert.IsTrue(merkleRoot == automaticRoot);
+    }
+
+    [Test]
+    public void TestMerkleSpoofFailure()
+    {
+        //TEST 1- We will legally mine some blocks, then modify the merkle root in one. The chain should become invalid
+        ArakCoin.Globals.masterChain = new Blockchain();
+        for (int i = 0; i < 10; i++)
+        {
+            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Globals.masterChain);
+        }
+
+        Assert.IsTrue(Blockchain.isBlockchainValid(ArakCoin.Globals.masterChain));
+        //do a "switcheroo"
+        ArakCoin.Globals.masterChain.getBlockByIndex(4).merkleRoot =
+            ArakCoin.Globals.masterChain.getBlockByIndex(3).merkleRoot;
+        Assert.IsFalse(Blockchain.isBlockchainValid(ArakCoin.Globals.masterChain));
+
+        //TEST 2- We will modify a single transaction id, and assert both the merkle root is different, and the chain
+        //becomes invalid
+        ArakCoin.Globals.masterChain = new Blockchain();
+        for (int i = 0; i < 10; i++)
+        {
+            BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Globals.masterChain);
+        }
+        Assert.IsTrue(Blockchain.isBlockchainValid(ArakCoin.Globals.masterChain));
+        Assert.IsTrue(MerkleFunctions.getMerkleRoot(
+                    ArakCoin.Globals.masterChain.getBlockByIndex(5).transactions) ==
+                    ArakCoin.Globals.masterChain.getBlockByIndex(5).merkleRoot);
+        
+        //modify the tx
+        ArakCoin.Globals.masterChain.getBlockByIndex(5).transactions[0].id =
+            ArakCoin.Globals.masterChain.getBlockByIndex(4).transactions[0].id;
+        
+        Assert.IsFalse(Blockchain.isBlockchainValid(ArakCoin.Globals.masterChain));
+        Assert.IsFalse(MerkleFunctions.getMerkleRoot(
+                          ArakCoin.Globals.masterChain.getBlockByIndex(5).transactions) ==
+                      ArakCoin.Globals.masterChain.getBlockByIndex(5).merkleRoot);
+    }
+
+    [Test]
+    public void TestSPV()
+    {
+        //Create a blockchain, mine some coins
         Blockchain bchain = new Blockchain();
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 20; i++)
         {
             BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
         }
         
-        int preMineHeight = bchain.getLength();
-
+        //create & mine a block with 9 txes (8 manual + coinbase)
         for (int i = 0; i < 8; i++)
         {
             TransactionFactory.createNewTransactionForBlockchain(
                 new TxOut[] { new TxOut(testPublicKey2, 1)},
                 testPrivateKey, bchain, 2);
         }
-        
-        //mine the block with the transactions
         BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+        Assert.IsTrue(bchain.getLastBlock().transactions.Length == 9); //should be 9 transactions we will test
         ArakCoin.Globals.masterChain = bchain;
 
-        // var root = MerkleFunctions.getMerkleRoot(bchain.getLastBlock().transactions);
-        var o = MerkleFunctions.calculateMinimalVerificationHashesFromTx(bchain.getLastBlock().transactions[3]);
-        int b = 3;
+        var merkleRoot = bchain.getLastBlock().merkleRoot; //this is the root our SPV's should derive
+        
+        //Let's say we wish to verify a transaction is included in the blockchain. We do this by deriving the merkle
+        //root from the block contaning our tx. Simulate getting the minimal spv hashes from a
+        //full node for this tx, along with the corresponding block. After that, ensure we can reconstruct the merkle
+        //root for the matching block from the minimal spv hashes, and verify it matches the known merkleRoot
+        
+        Transaction desiredTxToVerify = bchain.getLastBlock().transactions[2]; //let' s say we want verify the 3rd tx
+        
+        //first retrieve the minimal hashes, and associated metadata, to allow the calculation
+        var minimalHashes = MerkleFunctions.calculateMinimalVerificationHashesFromTx(desiredTxToVerify);
+        
+        //assert that the minimalHashes are smaller in number than the number of transactions (otherwise the entire
+        //point of having merkle trees is non-existent)
+        Assert.IsTrue(bchain.getLastBlock().transactions.Length > minimalHashes.Length);
+        
+        //now perform the merkle root calculation locally
+        var calculatedRootFromMinimalHashes =
+            MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(desiredTxToVerify, minimalHashes);
+        
+        //Test 1 -
+        //assert that the locally calculated merkle root equals the actual merkle root for the block containing the tx
+        Assert.IsTrue(calculatedRootFromMinimalHashes == merkleRoot);
+
+        //Test 2 -
+        //Verify this doesn't work for another tx
+        Transaction someOtherTx = bchain.getLastBlock().transactions[1];
+        var incorrectMinimalHashes =
+            MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(someOtherTx, minimalHashes);
+        Assert.False(incorrectMinimalHashes == merkleRoot);
+
+        //Test 3 -
+        //Create a transaction not mined, verify this fails at the calculateMinimalVerificationHashesFromTx
+        //(ie: the node shouldn't be able to find any block containing this tx)
+        var tx = TransactionFactory.createNewTransactionForBlockchain(
+            new TxOut[] { new TxOut(testPublicKey2, 1)},
+            testPrivateKey, bchain, 2);
+        var invalidMerklePath = MerkleFunctions.calculateMinimalVerificationHashesFromTx(tx);
+        Assert.IsNull(invalidMerklePath);
+        
+        //Test 4 -
+        //We will repeat everything in test 1, but this time choose the odd numbered last tx, and assert everything
+        //still works
+        desiredTxToVerify = bchain.getLastBlock().transactions[8];
+        minimalHashes = MerkleFunctions.calculateMinimalVerificationHashesFromTx(desiredTxToVerify);
+        calculatedRootFromMinimalHashes =
+            MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(desiredTxToVerify, minimalHashes);
+        Assert.IsTrue(calculatedRootFromMinimalHashes == merkleRoot);
+    }
+    
+    [Test]
+    public void Temp()
+    {
+        
 
 
     }

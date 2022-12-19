@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Threading.Tasks;
 using ArakCoin;
+using ArakCoin.Data;
 using ArakCoin.Transactions;
 
 namespace TestSuite.IntegrationTests;
@@ -140,6 +141,7 @@ public class BlockchainIntegration
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
+		nextBlock.merkleRoot = MerkleFunctions.getMerkleRoot(nextBlock.transactions);
 		
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 4);
@@ -156,7 +158,8 @@ public class BlockchainIntegration
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
 			nextBlock.nonce++;
-		
+		nextBlock.merkleRoot = MerkleFunctions.getMerkleRoot(nextBlock.transactions);
+
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 5);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
@@ -171,7 +174,8 @@ public class BlockchainIntegration
 		//note: there can be no coinbase tx (or any other tx) for the 1st/genesis block
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
-		
+		oldBlockNext.merkleRoot = MerkleFunctions.getMerkleRoot(oldBlockNext.transactions);
+
 		oldChain.addValidBlock(oldBlockNext); // old genesis block should be accepted
 		Assert.IsTrue(oldChain.getLength() == 1);
 	
@@ -185,7 +189,8 @@ public class BlockchainIntegration
 		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
-		
+		oldBlockNext.merkleRoot = MerkleFunctions.getMerkleRoot(oldBlockNext.transactions);
+
 		oldChain.addValidBlock(oldBlockNext); // much newer block should be accepted
 		Assert.IsTrue(oldChain.getLength() == 2);
 		
@@ -199,6 +204,7 @@ public class BlockchainIntegration
 		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
 			oldBlockNext.nonce++;
+		oldBlockNext.merkleRoot = MerkleFunctions.getMerkleRoot(oldBlockNext.transactions);
 		
 		oldChain.addValidBlock(oldBlockNext); // much older block should be rejected
 		Assert.IsFalse(oldChain.getLength() == 3);
@@ -364,6 +370,7 @@ public class BlockchainIntegration
 		//nevertheless, we will manually mine it here (bypassing the checks in the mineBlock method)
 		while (!invalidBlock.hashDifficultyMatch())
 			invalidBlock.nonce++;
+		invalidBlock.merkleRoot = MerkleFunctions.getMerkleRoot(invalidBlock.transactions);
 		Assert.IsTrue(invalidBlock.hashDifficultyMatch()); //block should have a hash matching blockchain difficulty
 		//should also contain a valid coinbase transaction
 		Assert.IsTrue(Transaction.isValidCoinbaseTransaction(invalidBlock.transactions[0], invalidBlock));

@@ -11,15 +11,19 @@ public class SPVMerkleHash
 {
     public string hash; //hash of this node
     public byte siblingSide; //the side this node's sibling is on. 0 is left, 1 is right
+    public int blockId; //the block index this SPV belongs to
     
-    public SPVMerkleHash(string hash, byte siblingSide)
+    public SPVMerkleHash(string hash, byte siblingSide, int blockId)
     {
         if (hash is null)
             throw new ArgumentException("hash value cannot be null");
         if (siblingSide != 0 && siblingSide != 1)
             throw new ArgumentException("siblingSide must be 0 or 1");
+        if (blockId <= 0)
+            throw new ArgumentException("blockId cannot be <= 0");
         
         this.hash = hash;
         this.siblingSide = siblingSide;
+        this.blockId = blockId;
     }
 }
