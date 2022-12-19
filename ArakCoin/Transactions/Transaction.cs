@@ -383,6 +383,11 @@ public class Transaction
     {
 	    return !(t1 == t2);
     }
+    
+    public override int GetHashCode()
+    {
+	    return getTxId(this).GetHashCode(); //hash code for the dictionary storage of tx keys in the blockchain
+    }
 	
     #endregion equality override
 }

@@ -14,11 +14,28 @@ public class Blockchain
 	public LinkedList<Block> blockchain = new LinkedList<Block>();
 	public int currentDifficulty = Protocol.INITIALIZED_DIFFICULTY;
 	public UTxOut[] uTxOuts = new UTxOut[]{}; //list of unspent tx outputs for this blockchain
-	
+
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
 	public readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
+	public Dictionary<string, int> txToBlockMap = new(); //stores a reference to a block for the given tx id key
 
+	/**
+	 * Retrieve the block index that the given tx id is located in, according to the txToBlockMap hashmap. If it
+	 * cannot be found, null is returned.
+	 */
+	public int? getBlockFromTxId(string txId)
+	{
+		try
+		{
+			return txToBlockMap[txId];
+		}
+		catch
+		{
+			return null;
+		}
+	}
+	
 	/**
 	 * Iteratively searches the blockchain in O(n) for the block node with the given index. If not found, returns null
 	 * The iterative search begins from the last node, and moves toward the first node, since we are more likely to
@@ -59,6 +76,7 @@ public class Blockchain
 				this.mempool = newChain.mempool;
 			
 			sanitizeMempool(); //mutate current mempool so that it's valid with the replaced chain
+			rebuildTxBlockMap(); //rebuilds the txToBlockMap
 		}
 	}
 
@@ -94,6 +112,13 @@ public class Blockchain
 
 			if (sanitizeMempoolIfBlockAdded)
 				sanitizeMempool();
+			
+			//keep a record of all transactions in the new block in the global hashmap, to quickly allow 
+			//Simple Payment Verification by clients
+			foreach (var tx in block.transactions)
+			{
+				txToBlockMap[tx.id] = block.index;
+			}
 
 			return true;
 		}
@@ -297,7 +322,7 @@ public class Blockchain
 			return false;
 		if (!block.hashDifficultyMatch() || block.difficulty != currentDifficulty)
 			return false;
-		if (block.prevBlockHash != Block.calculateBlockHash(lastBlock))
+		if (block.prevBlockHash != lastBlock.calculateBlockHash())
 			return false;
 		if (!isNewBlockTimestampValid(block))
 			return false;
@@ -644,6 +669,22 @@ public class Blockchain
 		}
 
 		return winningChain;
+	}
+
+	/**
+	 * Rebuilds the txToBlockMap dictionary (which maps transactions to their corresponding block)
+	 */
+	public void rebuildTxBlockMap()
+	{
+		txToBlockMap = new Dictionary<string, int>();
+		
+		foreach (var block in blockchain)
+		{
+			foreach (var tx in block.transactions)
+			{
+				txToBlockMap[tx.id] = block.index;
+			}
+		}
 	}
 
 	/**

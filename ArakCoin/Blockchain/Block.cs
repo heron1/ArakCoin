@@ -76,6 +76,41 @@ public class Block
 	}
 
 	/**
+	 * Calculate the merkle root for the given input array of transactions (assumes each tx has a valid & verified id)
+	 */
+	public static string calculateMerkleRoot(Transaction[] blockTxes)
+	{
+		List<List<string>> merkleLevels = new();
+		List<string> merkleLevel = new();
+		List<string> nextMerkleLevel = new();
+		foreach (var tx in blockTxes)
+		{
+			merkleLevel.Add(tx.id);
+		}
+
+		while (merkleLevel.Count != 1)
+		{
+			for (int i = 0; i < merkleLevel.Count; i += 2)
+			{
+				if (i + 1 < merkleLevel.Count)
+				{
+					nextMerkleLevel.Add(Utilities.calculateSHA256Hash(merkleLevel[i] + merkleLevel[i + 1]));
+				}
+				else
+				{
+					nextMerkleLevel.Add(merkleLevel[i]);
+				}
+			}
+
+			merkleLevels.Add(nextMerkleLevel.ToList());
+			merkleLevel = nextMerkleLevel;
+			nextMerkleLevel = new();
+		}
+
+		return merkleLevels.Last()[0];
+	}
+
+	/**
 	 * Returns true if the hash of this block matches its difficulty or greater, otherwise false. An input transactions
 	 * string argument can be passed to pre-calculate the transactions as a string for the block. This should only
 	 * be used for mining optimization to make it an O(1) operation - it should not be used for block validation.
@@ -133,7 +168,7 @@ public class Block
 			return false;
 		}
 
-		string? startingHash = calculateBlockHash(this);
+		string? startingHash = calculateBlockHash();
 		
 		//assert block has valid data, if it doesn't, return false
 		if (startingHash is null)

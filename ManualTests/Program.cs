@@ -28,7 +28,7 @@ namespace ManualTests
             //todo advanced - optional UI here for user to select the desired test. For now, just change in source code
             //as desired. ALTERNATIVELY: This project could be executed with different command line arguments indicating
             //the desired test, along with any arguments for the test (where applicable).
-            TestNetworkConnectivityFromHostsfile().Wait();
+            TestSimulatedNetworkInteraction().Wait();
 
         }
         
