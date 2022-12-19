@@ -24,7 +24,7 @@ public class Blockchain
 	 * Retrieve the block index that the given tx id is located in, according to the txToBlockMap hashmap. If it
 	 * cannot be found, null is returned.
 	 */
-	public int? getBlockFromTxId(string txId)
+	public int? getBlockIdFromTxId(string txId)
 	{
 		try
 		{

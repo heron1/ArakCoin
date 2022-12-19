@@ -17,6 +17,7 @@ public class Transaction
 		this.isCoinbaseTx = isCoinbaseTx;
 	}
 
+	//todo -> Candidate for deletion? Especially after merkle tree implementation
 	public static string? convertTxArrayToString(Transaction[] transactions)
 	{
 		StringBuilder accumString = new StringBuilder();

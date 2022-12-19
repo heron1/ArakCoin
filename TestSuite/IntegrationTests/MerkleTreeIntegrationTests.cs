@@ -220,7 +220,7 @@ public class MerkleTreeIntegrationTests
         
         int preMineHeight = bchain.getLength();
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
         {
             TransactionFactory.createNewTransactionForBlockchain(
                 new TxOut[] { new TxOut(testPublicKey2, 1)},

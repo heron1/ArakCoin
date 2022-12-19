@@ -7,14 +7,16 @@ namespace ArakCoin;
  */
 public class Block
 {
-	//block data fields that contribute to its hash
+	//block header data fields that contribute to its hash
 	public readonly int index;
-	public string merkleRoot;
-	public Transaction[] transactions;
+	public string? merkleRoot = null; //block has an invalid hash until its merkleRoot is calculated
 	public long timestamp;
 	public string prevBlockHash;
 	public int difficulty;
 	public long nonce;
+	
+	//only full nodes need contain the actual block transactions (only the merkleRoot is used in the block hash)
+	public Transaction[] transactions;
 
 	//below fields are not part of the block's data and don't contribute to its hash
 	public bool cancelMining = false; //allow a thread to cancel the mining of this block
@@ -43,25 +45,31 @@ public class Block
 	
 	/**
 	 * Calculate the block hash for any given block. Returns null if the block has an invalid format.
-	 * Note that if the transactionsString parameter is not null, it's assumed to represent the transactions of the
+	 * Note that if the merkleRoot parameter is not null, it's assumed to represent the merkle root transactions of the
 	 * block in string format so that this need not undergo re-calculation every function call. This is useful only for
-	 * mining optimization to make it an O(1) operation. For validation, the tx string should always be calculated
-	 * from the current block transactions (ie: the transactionsString should be left at the default null value).
+	 * mining optimization to make it an O(1) operation. For validation, the merkle root should always be calculated
+	 * from the current block transactions (ie: the merkleRoot should be left at the default null value).
 	 */
-	public static string? calculateBlockHash(Block block, string? transactionsString = null)
+	public static string? calculateBlockHash(Block block, string? merkleRoot = null)
 	{
 		if (block.transactions is null || block.prevBlockHash is null || block.index < 0)
 			return null;
 		
-		if (transactionsString is null)
+		if (merkleRoot is null)
 		{
-			transactionsString = Transaction.convertTxArrayToString(block.transactions.ToArray());
-			if (transactionsString is null)
+			//first ensure every transaction in the block is valid
+			foreach (var tx in block.transactions)
+			{
+				
+			}
+			
+			merkleRoot = Transaction.convertTxArrayToString(block.transactions.ToArray());
+			if (merkleRoot is null)
 				return null;
 		}
 		
 		string inputStr =
-			$"{block.index.ToString()},{transactionsString}," +
+			$"{block.index.ToString()},{merkleRoot}," +
 			$"{block.timestamp.ToString()}," +
 			$"{block.prevBlockHash.ToString()},{block.difficulty.ToString()},{block.nonce.ToString()}";
 
@@ -75,11 +83,6 @@ public class Block
 	{
 		return calculateBlockHash(this, transactionsString);
 	}
-
-	
-	
-	
-
 
 	/**
 	 * Returns true if the hash of this block matches its difficulty or greater, otherwise false. An input transactions

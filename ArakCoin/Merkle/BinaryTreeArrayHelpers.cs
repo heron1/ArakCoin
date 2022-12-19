@@ -4,7 +4,7 @@
  * A helper class for accessing elements in a binary tree that is represented as a standard array. Will return null
  * if the input node cannot be found within the Binary Tree container, or the desired return node doesn't exist
  */
-public static class BTArrayHelpers
+public static class BinaryTreeArrayHelpers
 {
     private static int? getIndexOfNode<T>(T? node, T[]? nodeList) where T : class
     {
@@ -80,7 +80,9 @@ public static class BTArrayHelpers
         return nodeList[(int)nodeIndex + 1];
     }
 
-    public static T? getSibling<T>(T node, T[] nodeList) where T : class
+    //note we return the sibling along with a byte object. A "0" value in the byte object means the sibling is located
+    //to the left of the input node, and a "1" value indicates it's located to the right of the input node
+    public static (T node, byte position)? getSibling<T>(T node, T[] nodeList) where T : class
     {
         int? nodeIndex = getIndexOfNode<T>(node, nodeList);
         if (nodeIndex is null)
@@ -88,9 +90,12 @@ public static class BTArrayHelpers
 
         T? sibling = getLeftSibling(node, nodeList);
         if (sibling is not null)
-            return sibling; //returns the left sibling
+            return (sibling, 0); //returns the left sibling
 
         sibling = getRightSibling(node, nodeList);
-        return sibling; //returns the right sibling or null if no siblings exist
+        if (sibling is not null)
+            return (sibling, 1); //returns the right sibling
+        
+        return null; //no sibling exists
     }
 }
