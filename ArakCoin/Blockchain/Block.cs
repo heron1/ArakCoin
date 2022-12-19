@@ -9,6 +9,7 @@ public class Block
 {
 	//block data fields that contribute to its hash
 	public readonly int index;
+	public string merkleRoot;
 	public Transaction[] transactions;
 	public long timestamp;
 	public string prevBlockHash;
@@ -75,40 +76,10 @@ public class Block
 		return calculateBlockHash(this, transactionsString);
 	}
 
-	/**
-	 * Calculate the merkle root for the given input array of transactions (assumes each tx has a valid & verified id)
-	 */
-	public static string calculateMerkleRoot(Transaction[] blockTxes)
-	{
-		List<List<string>> merkleLevels = new();
-		List<string> merkleLevel = new();
-		List<string> nextMerkleLevel = new();
-		foreach (var tx in blockTxes)
-		{
-			merkleLevel.Add(tx.id);
-		}
+	
+	
+	
 
-		while (merkleLevel.Count != 1)
-		{
-			for (int i = 0; i < merkleLevel.Count; i += 2)
-			{
-				if (i + 1 < merkleLevel.Count)
-				{
-					nextMerkleLevel.Add(Utilities.calculateSHA256Hash(merkleLevel[i] + merkleLevel[i + 1]));
-				}
-				else
-				{
-					nextMerkleLevel.Add(merkleLevel[i]);
-				}
-			}
-
-			merkleLevels.Add(nextMerkleLevel.ToList());
-			merkleLevel = nextMerkleLevel;
-			nextMerkleLevel = new();
-		}
-
-		return merkleLevels.Last()[0];
-	}
 
 	/**
 	 * Returns true if the hash of this block matches its difficulty or greater, otherwise false. An input transactions
