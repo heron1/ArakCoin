@@ -167,6 +167,58 @@ public static class NetworkingManager
     }
 
     /**
+     * Retrieves the specified block headers from the network for the given block index range (both ends inclusive).
+     * Will return a partial list if at least one block header is found, otherwise null
+     */
+    public static async Task<List<Block>?> retrieveBlockHeaders(int startBlockIndex, int endBlockIndex)
+    {
+        List<Block> blockHeaderList = new();
+        
+        NetworkMessage? recvMsg = null;
+        Host? foundNode = null;
+
+        foreach (var node in HostsManager.getNodes())
+        { 
+            var requestMsg = new NetworkMessage(MessageTypeEnum.GETHEADER, startBlockIndex.ToString());
+            
+            recvMsg = await Communication.communicateWithNode(requestMsg, node);
+            if (recvMsg is not null)
+            {
+                foundNode = node;
+                break;
+            }
+        }
+
+        if (recvMsg is null || recvMsg.messageTypeEnum != MessageTypeEnum.GETHEADER || foundNode is null)
+            return null;
+        
+        Block? blockHeader = Serialize.deserializeJsonToBlock(recvMsg.rawMessage);
+        if (blockHeader is null)
+            return null;
+        
+        //we have found a node we can communicate with, and have the first header. Retrieve remaining block headers
+        blockHeaderList.Add(blockHeader);
+        for (int i = startBlockIndex + 1; i < endBlockIndex + 2; i++)
+        {
+            var requestMsg = new NetworkMessage(MessageTypeEnum.GETHEADER, i.ToString());
+            recvMsg = await Communication.communicateWithNode(requestMsg, foundNode);
+            
+            if (recvMsg is null || recvMsg.messageTypeEnum != MessageTypeEnum.GETHEADER)
+            {
+                break; //no more block headers found with this node
+            }
+            
+            blockHeader = Serialize.deserializeJsonToBlock(recvMsg.rawMessage);
+            if (blockHeader is null)
+                break; 
+            
+            blockHeaderList.Add(blockHeader);
+        }
+
+        return blockHeaderList;
+    }
+
+    /**
      * Communicate with the P2P network to find the block header with a merkle root purporting to include the input
      * transaction. Retrieve a list of minimal merkle hashes from the full block that is necessary to locally calculate
      * the merkle root and confirm that the input transaction is indeed included in the merkle tree of the block.

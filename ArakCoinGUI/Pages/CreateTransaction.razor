@@ -164,6 +164,10 @@ else
 			    return;
 		    }
 		    GuiUtilities.guiAlert($"Transaction {tx.id} has been broadcast to the network..");
+		    
+		    //keep track of this transaction locally within the GuiGlobals, to monitor its confirmations
+		    GuiGlobals.localTransactions.Add(tx);
+		    
 		    NavigationManager.NavigateTo("/createtransaction", forceLoad: true);
 	    }
 	    finally

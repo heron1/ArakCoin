@@ -201,8 +201,8 @@ public class Block
 			return false;
 		Block other = (Block)o;
 
-		if (this.index == other.index && Transaction.convertTxArrayToString(this.transactions) == 
-		    Transaction.convertTxArrayToString(other.transactions) && this.timestamp == other.timestamp &&
+		if (this.index == other.index && this.merkleRoot == 
+		    other.merkleRoot && this.timestamp == other.timestamp &&
 		    this.prevBlockHash == other.prevBlockHash && this.difficulty == other.difficulty && 
 		    this.nonce == other.nonce)
 			return true;

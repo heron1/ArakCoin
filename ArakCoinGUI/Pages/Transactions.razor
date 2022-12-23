@@ -1,0 +1,174 @@
+﻿@page "/Transactions"
+@using ArakCoin_GUI.Data
+@using ArakCoin
+@using ArakCoin.Networking
+@using ArakCoin.Transactions
+
+@if (!Startup.loaded)
+{
+    <p><em>retrieving network information..</em></p>
+}
+else
+{
+    <h3>Transactions</h3>
+    
+    @lock (GuiGlobals.txLock)
+    {
+        @foreach (var tx in transactions)
+        {
+            <div class="inline">
+                <p>Transaction:  </p>
+                <p>@tx.tx.id -</p>
+            </div>
+            if (tx.confirmations == -1)
+            {
+                <p>Confirmations: loading..</p>
+            }
+            else
+            {
+                <p>Confirmations: @(tx.confirmations > 10 ? "10+" : tx.confirmations)</p>
+            }
+            <hr />
+        } 
+    }
+}
+
+@code {
+    bool finishedLoading = true; //every refresh, wait until all transactions are finished loading
+    List<(Transaction tx, int confirmations)> transactions = new();
+    int confirmationLimit = 11; //limit number of confirmations to track
+
+    private void Callback(object? o, string update)
+    {
+        if (finishedLoading)
+        {
+            Task.Run(updateConfirmationsForTxes);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Callback(object? o, Block newBlock)
+    {
+        if (finishedLoading)
+            Task.Run(updateConfirmationsForTxes);
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        lock (GuiGlobals.txLock)
+        {
+           foreach (var tx in GuiGlobals.localTransactions)
+               {
+                   transactions.Add((tx, -1)); //-1 means the tx hasn't yet loaded its confirmations
+               } 
+        }
+
+        Task.Run(updateConfirmationsForTxes);
+        GlobalHandler.latestBlockUpdateEvent += Callback;
+        GuiHandler.stateUpdate += Callback;
+    }
+
+    private void updateConfirmationsForTxes()
+    {
+        lock (GuiGlobals.txLock)
+        {
+            if (!finishedLoading)
+            return;
+
+        finishedLoading = false;
+        
+        //if we're a node, we don't need to use merkle trees at all for transaction confirmation, since we already 
+        //have a full list of all transactions. We can do these calculations easily locally instead
+        if (Settings.isNode)
+        {
+            for (var i = 0; i < transactions.Count; i++)
+            {
+                var tx = transactions[i];
+                var blockId = Globals.masterChain.getBlockIdFromTxId(tx.tx.id);
+                if (blockId is null)
+                {
+                    tx.confirmations = 0;
+                    transactions[i] = tx;
+                    continue;
+                }
+                var foundBlock = Globals.masterChain.getBlockByIndex((int)blockId);
+                int confirmations = 0;
+
+                while (foundBlock is not null && confirmations < confirmationLimit)
+                {
+                    foundBlock = Globals.masterChain.getBlockByIndex(foundBlock.index + 1);
+                    confirmations++;
+                }
+
+                tx.confirmations = confirmations;
+                transactions[i] = tx;
+            }
+
+            finishedLoading = true;
+            return;
+        }
+        
+        for (var i = 0; i < transactions.Count; i++)
+        {
+            var tx = transactions[i];
+            var blockHeader = NetworkingManager.retrieveValidatedBlockHeaderContainingTx(tx.tx).Result;
+            if (blockHeader is null)
+            {
+                tx.confirmations = 0;
+                // transactions[i] = tx;
+                continue;
+            }
+
+            //gather number of confirmations by finding the furthest possible mined block, up to max confirmations
+            var blockHeaders = NetworkingManager.retrieveBlockHeaders(
+                blockHeader.index, blockHeader.index + confirmationLimit).Result;
+            if (blockHeaders is null)
+            {
+                tx.confirmations = 0;
+                // transactions[i] = tx;
+                continue;
+            }
+
+            if (blockHeader != blockHeaders[0]) //node has switched the block
+            {
+                tx.confirmations = 0;
+                // transactions[i] = tx;
+                continue;
+            }
+
+            if (blockHeaders.Count == 0) //only a single confirmation exists
+            {
+                tx.confirmations = 1;
+                 // transactions[i] = tx;
+                continue;
+            }
+
+            //Now validate every subsequent block header has PoW confirming the first block header containing our tx.
+            //If it doesnt, the node has sent us an erronous list
+            for (int j = 0; j < blockHeaders.Count - 1; j++)
+            {
+                if (blockHeaders[j + 1].prevBlockHash != blockHeaders[j].calculateBlockHash())
+                {
+                    tx.confirmations = 0;
+                    // transactions[i] = tx;
+                    continue;
+                }
+
+                if (!blockHeaders[j + 1].hashDifficultyMatch())
+                {
+                    tx.confirmations = 0;
+                    // transactions[i] = tx;
+                    continue;
+                }
+            }
+
+            //confirmations successfuly validated as the length of the returned block headers
+            tx.confirmations = blockHeaders.Count;
+        }
+
+        finishedLoading = true;
+        }
+    }
+
+}
