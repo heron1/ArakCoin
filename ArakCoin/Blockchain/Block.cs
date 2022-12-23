@@ -54,7 +54,7 @@ public class Block
 	 * mining optimization to make it an O(1) operation. For validation, the merkle root should always be calculated
 	 * from the current block transactions (ie: the merkleRoot should be left at the default null value).
 	 */
-	public static string? calculateBlockHash(Block block, string? merkleRootLocal = null)
+	public static string? calculateBlockHash(Block block, string? merkleRootLocal = null, bool overrideMerkle = true)
 	{
 		if (block.prevBlockHash is null || block.index <= 0)
 			return null;
@@ -62,7 +62,7 @@ public class Block
 		if (block.transactions is null && (block.merkleRoot is null || block.merkleRoot == ""))
 			return null; //if the block has no transactions, it must contain a merkle root representing them
 		
-		if (merkleRootLocal is null && block.transactions?.Length > 0)
+		if (overrideMerkle && block.transactions?.Length > 0)
 		{
 			//first ensure every transaction in the block has a matching txid
 			foreach (var tx in block.transactions)
@@ -73,6 +73,8 @@ public class Block
 
 			merkleRootLocal = MerkleFunctions.getMerkleRoot(block.transactions);
 		}
+		else if (!overrideMerkle)
+			merkleRootLocal = block.merkleRoot;
 
 		string inputStr =
 			$"{block.index.ToString()},{merkleRootLocal}," +

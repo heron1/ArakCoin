@@ -88,33 +88,36 @@ public class BlockchainIntegration
 		Assert.IsFalse(b1 == b2);
 		Assert.IsFalse(b1.Equals(b2));
 		
-		b1.prevBlockHash = b2.prevBlockHash;
-		//modify a tx
-		tx = TransactionFactory.createTransaction(new TxOut[]
-		{
-			new TxOut(testPublicKey2, 3), //moved from 2 to 3
-			new TxOut(testPrivateKey3, 3)
-		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
-		b1.transactions = new Transaction[] {tx};
+		//Below test was done when block hash was based upon the transaction array instead of merkle root. It's been
+		//replaced with the MerkleTreeIntegrationTests.cs which are much more extensive
 		
-		// blocks should be different
-		Assert.IsFalse(b1 == b2);
-		Assert.IsFalse(b1.Equals(b2));
-	
-		//change tx back to unmodified state
-		tx = TransactionFactory.createTransaction(new TxOut[]
-		{
-			new TxOut(testPublicKey2, 2), //2 is original amount
-			new TxOut(testPrivateKey3, 3)
-		}, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
-		b1.transactions = new Transaction[] {tx};
-		
-		// blocks should still have different references
-		Assert.IsFalse(ReferenceEquals(b1, b2));
-		
-		// but should now be equal again
-		Assert.IsTrue(b1 == b2);
-		Assert.IsTrue(b1.Equals(b2));
+		// b1.prevBlockHash = b2.prevBlockHash;
+		// //modify a tx
+		// tx = TransactionFactory.createTransaction(new TxOut[]
+		// {
+		// 	new TxOut(testPublicKey2, 3), //moved from 2 to 3
+		// 	new TxOut(testPrivateKey3, 3)
+		// }, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		// b1.transactions = new Transaction[] {tx};
+		//
+		// // blocks should be different
+		// Assert.IsFalse(b1 == b2);
+		// Assert.IsFalse(b1.Equals(b2));
+		//
+		// //change tx back to unmodified state
+		// tx = TransactionFactory.createTransaction(new TxOut[]
+		// {
+		// 	new TxOut(testPublicKey2, 2), //2 is original amount
+		// 	new TxOut(testPrivateKey3, 3)
+		// }, testPrivateKey, bchain.uTxOuts, bchain.mempool, 0, false)!;
+		// b1.transactions = new Transaction[] {tx};
+		//
+		// // blocks should still have different references
+		// Assert.IsFalse(ReferenceEquals(b1, b2));
+		//
+		// // but should now be equal again
+		// Assert.IsTrue(b1 == b2);
+		// Assert.IsTrue(b1.Equals(b2));
 	}
 
 	[Test]

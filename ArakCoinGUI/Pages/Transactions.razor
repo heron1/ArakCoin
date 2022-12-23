@@ -116,7 +116,7 @@ else
             if (blockHeader is null)
             {
                 tx.confirmations = 0;
-                // transactions[i] = tx;
+                transactions[i] = tx;
                 continue;
             }
 
@@ -126,7 +126,7 @@ else
             if (blockHeaders is null)
             {
                 tx.confirmations = 0;
-                // transactions[i] = tx;
+                transactions[i] = tx;
                 continue;
             }
 
@@ -140,7 +140,7 @@ else
             if (blockHeaders.Count == 0) //only a single confirmation exists
             {
                 tx.confirmations = 1;
-                 // transactions[i] = tx;
+                transactions[i] = tx;
                 continue;
             }
 
@@ -151,20 +151,21 @@ else
                 if (blockHeaders[j + 1].prevBlockHash != blockHeaders[j].calculateBlockHash())
                 {
                     tx.confirmations = 0;
-                    // transactions[i] = tx;
+                    transactions[i] = tx;
                     continue;
                 }
 
                 if (!blockHeaders[j + 1].hashDifficultyMatch())
                 {
                     tx.confirmations = 0;
-                    // transactions[i] = tx;
+                    transactions[i] = tx;
                     continue;
                 }
             }
 
             //confirmations successfuly validated as the length of the returned block headers
             tx.confirmations = blockHeaders.Count;
+            transactions[i] = tx;
         }
 
         finishedLoading = true;

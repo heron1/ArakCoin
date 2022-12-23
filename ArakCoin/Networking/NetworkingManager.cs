@@ -273,7 +273,7 @@ public static class NetworkingManager
         string merkleRoot = MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(tx, minSpvHashes);
         
         //Now retrieve the block header purporting to contain our transaction from the node
-        requestMsg = new NetworkMessage(MessageTypeEnum.GETHEADER, tx.id);
+        requestMsg = new NetworkMessage(MessageTypeEnum.GETHEADER, minSpvHashes[0].blockId.ToString());
         var respNm = await Communication.communicateWithNode(requestMsg, foundNode);
         if (respNm is null)
             return null;
