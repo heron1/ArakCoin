@@ -17,7 +17,7 @@ public class Block
 	public long nonce;
 	
 	//only full nodes need contain the actual block transactions (only the merkleRoot is used in the block hash)
-	public Transaction[] transactions;
+	public Transaction[]? transactions;
 
 	//below fields are not part of the block's data and don't contribute to its hash
 	public bool cancelMining = false; //allow a thread to cancel the mining of this block
@@ -29,7 +29,7 @@ public class Block
 	 * mining and return once endingNonceIfParallel equals the nonce. This is only useful for parallel mining
 	 */
 	public Block(int index, Transaction[]? transactions, long timestamp, string prevBlockHash, int difficulty, 
-		long nonce)
+		long nonce, string? merkleRoot = null)
 	{
 		if (transactions is null)
 			transactions = new Transaction[] { };
@@ -42,6 +42,9 @@ public class Block
 		this.prevBlockHash = prevBlockHash;
 		this.difficulty = difficulty;
 		this.nonce = nonce;
+
+		if (merkleRoot is not null)
+			this.merkleRoot = merkleRoot;
 	}
 	
 	/**
@@ -53,10 +56,13 @@ public class Block
 	 */
 	public static string? calculateBlockHash(Block block, string? merkleRootLocal = null)
 	{
-		if (block.transactions is null || block.prevBlockHash is null || block.index < 0)
+		if (block.prevBlockHash is null || block.index <= 0)
 			return null;
+
+		if (block.transactions is null && (block.merkleRoot is null || block.merkleRoot == ""))
+			return null; //if the block has no transactions, it must contain a merkle root representing them
 		
-		if (merkleRootLocal is null && block.transactions.Length > 0)
+		if (merkleRootLocal is null && block.transactions?.Length > 0)
 		{
 			//first ensure every transaction in the block has a matching txid
 			foreach (var tx in block.transactions)

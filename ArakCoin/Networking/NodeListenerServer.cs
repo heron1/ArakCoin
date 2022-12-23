@@ -142,6 +142,19 @@ public class NodeListenerServer : IDisposable
                     return createErrorNetworkMessage($"Local node error serializing block occurred");
                 return new NetworkMessage(MessageTypeEnum.GETBLOCK, serializedBlock);
             
+            case MessageTypeEnum.GETHEADER:
+                int blockHeaderIndex;
+                if (!Int32.TryParse(networkMessage.rawMessage, out blockHeaderIndex))
+                    return createErrorNetworkMessage("Invalid message content for block index");
+                Block? requestedBlockHeader = Globals.masterChain.getBlockHeaderByIndex(blockHeaderIndex);
+                if (requestedBlockHeader is null)
+                    return createErrorNetworkMessage($"Block with index {blockHeaderIndex} does not " +
+                                                     $"exist in local blockchain");
+                var serializedBlockHeader = Serialize.serializeBlockToJson(requestedBlockHeader);
+                if (serializedBlockHeader is null)
+                    return createErrorNetworkMessage($"Local node error serializing block header occurred");
+                return new NetworkMessage(MessageTypeEnum.GETHEADER, serializedBlockHeader);
+            
             case MessageTypeEnum.NEXTBLOCK:
                 Block? candidateNextBlock = Serialize.deserializeJsonToBlock(networkMessage.rawMessage);
                 if (candidateNextBlock is null || candidateNextBlock.calculateBlockHash() is null)
@@ -167,7 +180,7 @@ public class NodeListenerServer : IDisposable
                         $"potential replacement chain");
                 }
                 return createErrorNetworkMessage($"Invalid next block received");
-            
+
             case MessageTypeEnum.GETMEMPOOL:
                 var serializedMempool = Serialize.serializeMempoolToJson(Globals.masterChain.mempool);
                 if (serializedMempool is null)
@@ -236,6 +249,86 @@ public class NodeListenerServer : IDisposable
                 return new NetworkMessage(MessageTypeEnum.GETCHAINHEIGHT, 
                     Globals.masterChain.getLength().ToString());
             
+            case MessageTypeEnum.GETMINSPV:
+                string txId = networkMessage.rawMessage;
+                if (txId is null)
+                    return createErrorNetworkMessage("Did not receive a transaction id");
+                
+                //retrieve the block containing the tx id
+                int? blockindex = Globals.masterChain.getBlockIdFromTxId(txId);
+                if (blockindex is null)
+                    return createErrorNetworkMessage("Could not find a block with the given transaction id");
+                Block? foundBlock = Globals.masterChain.getBlockByIndex((int)blockindex);
+                if (foundBlock is null)
+                {
+                    Utilities.exceptionLog($"Block id {blockindex} exists in the local hashmap but not the " +
+                                           $"blockchain, this should not be possible. Occurred during the" +
+                                           $"GETMINSPV NodeListenerServer response");
+                    return createErrorNetworkMessage($"Unexpected error occurred on this node. Block index " +
+                                                     $"{blockindex} was" +
+                                                     "found but there was a problem retrieving the block");
+                }
+
+                //retrieve the desired transaction from the block
+                Transaction desiredTx = null;
+                foreach (var tx in foundBlock.transactions)
+                {
+                    if (tx.id == txId)
+                        desiredTx = tx;
+                }
+                if (desiredTx is null)
+                {
+                    Utilities.exceptionLog($"Block id {blockindex} purportedly contains txId {txId} in the hashmap," +
+                                           $"but it wasn't found in the block. This should not be possible. " +
+                                           $"Occurred during the GETMINSPV NodeListenerServer response");
+                    return createErrorNetworkMessage($"Unexpected error occurred on this node. Block " +
+                                                     $"{blockindex} was supposed to contain txId " +
+                                                     $"{txId} yet it wasn't found");
+                }
+                    
+                //retrieve the minimal hashes
+                var minimalHashes = MerkleFunctions.calculateMinimalVerificationHashesFromTx(desiredTx);
+                if (minimalHashes is null)
+                {
+                    Utilities.exceptionLog($"Block id {blockindex} with txId {txId} was found, however the minimal " +
+                                           $"hashed could not be calculated. This should not have occurred." +
+                                           $"Occurred during the GETMINSPV NodeListenerServer response");
+                    return createErrorNetworkMessage($"Unexpected error occurred on this node. Block " +
+                                                     $"{blockindex} with txId " +
+                                                     $"{txId} was found, yet a failure occurred calculating the" +
+                                                     $"minimal hashes");
+                }
+                var serializedHashes = Serialize.serializeContainerToJson(minimalHashes);
+                if (serializedHashes is null)
+                    return createErrorNetworkMessage("Error serializing the minimal hashes");
+                return new NetworkMessage(MessageTypeEnum.GETMINSPV, serializedHashes);
+            
+            case MessageTypeEnum.GETHEADERCONTAININGTX:
+                txId = networkMessage.rawMessage;
+                if (txId is null)
+                    return createErrorNetworkMessage("Did not receive a transaction id");
+                
+                //retrieve the block containing the tx id
+                blockindex = Globals.masterChain.getBlockIdFromTxId(txId);
+                if (blockindex is null)
+                    return createErrorNetworkMessage("Could not find a block with the given transaction id");
+                foundBlock = Globals.masterChain.getBlockHeaderByIndex((int)blockindex);
+                if (foundBlock is null)
+                {
+                    Utilities.exceptionLog($"Block id {blockindex} exists in the local hashmap but not the " +
+                                           $"blockchain, this should not be possible. Occurred during the" +
+                                           $"GETMINSPV NodeListenerServer response");
+                    return createErrorNetworkMessage($"Unexpected error occurred on this node. Block index " +
+                                                     $"{blockindex} was" +
+                                                     "found but there was a problem retrieving the block");
+                }
+                
+                serializedBlock = Serialize.serializeBlockToJson(foundBlock);
+                if (serializedBlock is null)
+                    return createErrorNetworkMessage("Error serializing the block");
+                
+                return new NetworkMessage(MessageTypeEnum.GETHEADERCONTAININGTX, serializedBlock);
+                
             default:
                 return createErrorNetworkMessage();
         }

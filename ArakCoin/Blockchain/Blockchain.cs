@@ -18,11 +18,11 @@ public class Blockchain
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
 	public readonly object blockChainLock = new object(); //lock for critical sections on this blockchain
-	public Dictionary<string, int> txToBlockMap = new(); //stores a reference to a block for the given tx id key
+	public Dictionary<string, int> txToBlockMap = new(); //maps a tx id key to a block id
 
 	/**
 	 * Retrieve the block index that the given tx id is located in, according to the txToBlockMap hashmap. If it
-	 * cannot be found, null is returned.
+	 * cannot be found, null is returned. This is an O(1) operation.
 	 */
 	public int? getBlockIdFromTxId(string txId)
 	{
@@ -234,6 +234,23 @@ public class Blockchain
 	}
 
 	/**
+	 * Iteratively searches the blockchain for the block with the given index, and returns its header.
+	 * If not found, returns null
+	 */
+	public Block? getBlockHeaderByIndex(int index)
+	{
+		Block? foundBlock = getBlockByIndex(index);
+		if (foundBlock is null)
+			return null;
+		
+		//make a copy of the block, but one with null transactions. This is the one we will return
+		Block headerBlock = new Block(foundBlock.index, null, foundBlock.timestamp, foundBlock.prevBlockHash,
+			foundBlock.difficulty, foundBlock.nonce, foundBlock.merkleRoot);
+
+		return headerBlock;
+	}
+
+	/**
 	 * Returns the first block of this blockchain in O(1) time. If the chain is empty, return null
 	 */
 	public Block? getFirstBlock()
@@ -259,8 +276,9 @@ public class Blockchain
 	{
 		Transaction[] transactions = block.transactions.ToArray();
 
-		//block data must contain at least one transaction
-		if (block.transactions is null || transactions.Length == 0)
+		//block data must contain at least one transaction, and a merkle root
+		if (block.transactions is null || transactions.Length == 0 || 
+		    block.merkleRoot is null || block.merkleRoot == "")
 			return false;
 		
 		//however it cannot exceed the tx limit per block as per the protocol

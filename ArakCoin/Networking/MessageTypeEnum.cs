@@ -10,6 +10,14 @@ public enum MessageTypeEnum
     ECHO, //node to send back the exact same received message, provided its <= Settings.echoCharLimit
     GETCHAIN , //client request to retrieve this node's blockchain. Client message content is ignored
     GETBLOCK, //client requests a specific block by ID belonging to this node's chain. Client message to contain the ID
+    GETHEADER, //client requests a specific block header by ID (same as GETBLOCK but without any transactions). Client
+               //message to contain the ID
+    GETMINSPV, //client requests the minimum merkle hashes necessary to calculate the merkle root of the block
+               //containing a specific transaction. Client message to contain the transaction id. The node is to 
+               //respond with the minimum merkle hashes in a SPVMerkleHash container, which will also contain
+               //the block they're located within
+    GETHEADERCONTAININGTX, //client request contains a tx id. The node response should contain the block header with
+                          //that tx if it exists, otherwise an error is returned
     NEXTBLOCK, //client sends a block to this node. If it's a valid next block, this node will append it to its chain,
                //and send the NEXTBLOCK enum back again. If this didn't happen, this node will send an ERROR instead.
                //If the next block is more than 1 index ahead of the local chain, then it's unknown if the block will

@@ -104,36 +104,40 @@ public static class MerkleFunctions
 	 * Given the input transaction, find its block within the global blockchain and calculate the minimal subset of
 	 * hashes within the block's transactions (represented as a merkle tree) required to calculate the merkle root
 	 * from scratch. This should have a space complexity of O(lg n) of the merkle tree size "n". This is useful to send
-	 * to client's desiring Simple Payment Verification without them requiring a complete copy of the block's
+	 * to clients desiring Simple Payment Verification without them requiring a complete copy of the block's
 	 * transactions, but being able to prove to themselves that the block does indeed contain the input
 	 * transaction (or not) by calculating the merkle root themselves, but with only a partial subset of the merkle
 	 * tree hashes.
 	 *
 	 * Returns null if the transaction cannot be found in the blockchain, or calculating the minimal subset of the
-	 * merkle tree hashes for the client to calculate the merkle root from fails for whatever reason. If the tx
-	 * is the only one within the block's transactions, then the hash return array is simply empty (indicating that
-	 * the input transaction id should in fact be equal to the merkle root)
+	 * merkle tree hashes fails for whatever reason. If the tx is the only one within the block's transactions,
+	 * then the hash return array is simply empty (indicating that the input transaction id should in fact be equal
+	 * to the merkle root)
 	 */
 	public static SPVMerkleHash[]? calculateMinimalVerificationHashesFromTx(Transaction tx)
 	{
 		if (tx.id is null)
 			return null;
-		
-		int? blockIndex = Globals.masterChain.getBlockIdFromTxId(tx.id);
-		if (blockIndex is null)
-			return null;
 
-		Block? foundBlock = Globals.masterChain.getBlockByIndex((int)blockIndex);
-		if (foundBlock is null)
-			return null;
+		Block? foundBlock;
+		int? blockIndex;
+		lock (Globals.masterChain.blockChainLock)
+		{
+			blockIndex = Globals.masterChain.getBlockIdFromTxId(tx.id);
+			if (blockIndex is null)
+				return null;
+
+			foundBlock = Globals.masterChain.getBlockByIndex((int)blockIndex);
+			if (foundBlock is null)
+				return null;
+		}
 
 		List<SPVMerkleHash> merkleHashes = new(); //the minimal merkle hashes to be sent to the client we will build
 
 		//we build the tree, and populate the merkleHashes
 		string[] merkleTree = buildMerkleTree(foundBlock.transactions);
 		
-		// merkleHashes.Add(new SPVMerkleHash(sibling.Value.node, sibling.Value.position));
-		string lastNode = tx.id;
+		string lastNode = tx.id; //we initialize the beginning node as the input tx id hash
 		
 		//now begin the recursive operation to populate the hashes from siblings whilst moving up the tree 
 		while (true)

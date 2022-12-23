@@ -165,4 +165,76 @@ public static class NetworkingManager
             HostsManager.addNode(node);
         }
     }
+
+    /**
+     * Communicate with the P2P network to find the block header with a merkle root purporting to include the input
+     * transaction. Retrieve a list of minimal merkle hashes from the full block that is necessary to locally calculate
+     * the merkle root and confirm that the input transaction is indeed included in the merkle tree of the block.
+     * If the merkle root calculated locally from these minimal hashes is the same as the merkle root of the block
+     * header containing our transaction (within the hashed merkle root), then we return that block header.
+     * If not, or if any other part of this operation fails for whatever reason, null is returned.
+     *
+     * Note this entire operation has a space complexity of O(lg n) given n number of transactions
+     * in the block that contains our input transaction. This makes it an ideal function call by clients to validate
+     * that a block contains the input transaction without needing the full block.
+     */
+    public static async Task<Block?> retrieveValidatedBlockHeaderContainingTx(Transaction tx)
+    {
+        if (tx is null)
+            return null;
+        
+        //First attempt to retrieve the minimal SPV hashes from the block purporting to containin our tx.
+        //We attempt this by sequentially communicating with every known node until we have a successful communication
+        //response.
+        var requestMsg = new NetworkMessage(MessageTypeEnum.GETMINSPV, tx.id);
+        var serializedNetworkMsg = Serialize.serializeNetworkMessageToJson(requestMsg);
+
+        string? recvMsg = null;
+        Host? foundNode = null;
+
+        foreach (var node in HostsManager.getNodes())
+        { 
+            recvMsg = await Communication.communicateWithNode(serializedNetworkMsg, node);
+            if (recvMsg is not null)
+            {
+                foundNode = node;
+                break;
+            }
+        }
+
+        if (recvMsg is null || foundNode is null)
+            return null;
+        
+        var receivedNetworkMsg = Serialize.deserializeJsonToNetworkMessage(recvMsg);
+        if (receivedNetworkMsg is null)
+            return null;
+
+        if (receivedNetworkMsg.messageTypeEnum != MessageTypeEnum.GETMINSPV)
+            return null;
+
+        SPVMerkleHash[]? minSpvHashes = 
+            Serialize.deserializeJsonToContainer<SPVMerkleHash[]>(receivedNetworkMsg.rawMessage);
+        if (minSpvHashes is null)
+            return null;
+        
+        //Now calculate the merkle root from the retrieved minSpvHashes, containing our input transaction
+        string merkleRoot = MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(tx, minSpvHashes);
+        
+        //Now retrieve the block header purporting to contain our transaction from the node
+        requestMsg = new NetworkMessage(MessageTypeEnum.GETHEADER, tx.id);
+        var respNm = await Communication.communicateWithNode(requestMsg, foundNode);
+        if (respNm is null)
+            return null;
+
+        Block? blockheader = Serialize.deserializeJsonToBlock(respNm.rawMessage);
+        if (blockheader is null)
+            return null;
+        
+        //Compare our locally calculated merkle root versus the retrieved header merkle root, ensure they are equal
+        if (blockheader.merkleRoot != merkleRoot)
+            return null;
+        
+        //all checks passed, return the block header that has been validated to contain our input transaction
+        return blockheader;
+    }
 }

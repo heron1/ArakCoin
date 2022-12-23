@@ -242,6 +242,54 @@ public class NetworkingIntegrationTests
         receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
         Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.ERROR);
         
+        //GETHEADER test
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETHEADER, "7");
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETHEADER);
+        Block receivedBlockHeader = Serialize.deserializeJsonToBlock(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedBlock.calculateBlockHash()); //ensure block is valid
+        Assert.IsTrue(receivedBlockHeader.index == 7);
+        Assert.IsTrue(receivedBlockHeader.transactions.Length == 0); //only the header should be returned, not any txes
+        
+        //GETMINSPV test
+        //first create a tx, and mine it
+        Transaction? givenTx = TransactionFactory.createNewTransactionForBlockchain(
+            new TxOut[] { new TxOut(Globals.testPublicKey2, 1)}, 
+            Globals.testPrivateKey, ArakCoin.Globals.masterChain);
+        Assert.IsNotNull(givenTx);
+        bool success = BlockFactory.mineNextBlockAndAddToBlockchain(ArakCoin.Globals.masterChain);
+        Assert.IsTrue(success);
+        
+        //retrieve the minimal merkle hashes to calculate the merkle root from the given tx
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETMINSPV, givenTx.id);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETMINSPV);
+        SPVMerkleHash[]? receivedMinimalHashes = 
+            Serialize.deserializeJsonToContainer<SPVMerkleHash[]>(receivedNetworkMessage.rawMessage);
+        Assert.IsNotNull(receivedMinimalHashes);
+        
+        //assert that the correct merkle root for the block containing the tx can be calculated from the minimal hashes
+        string locallyCalculatedRoot = 
+            MerkleFunctions.calculateMerkleRootFromMinimalVerificationHashes(givenTx, receivedMinimalHashes);
+
+        int blockId = ArakCoin.Globals.masterChain.txToBlockMap[givenTx.id];
+        Block block = ArakCoin.Globals.masterChain.getBlockByIndex(blockId);
+        Assert.IsTrue(block.merkleRoot == locallyCalculatedRoot);
+        
+        //GETHEADERCONTAININGTX test
+        sendNetworkMessage = new NetworkMessage(MessageTypeEnum.GETHEADERCONTAININGTX, givenTx.id);
+        resp = await Communication.communicateWithNode(sendNetworkMessage.ToString(), host);
+        Assert.IsNotNull(resp);
+        receivedNetworkMessage = Serialize.deserializeJsonToNetworkMessage(resp);
+        Assert.IsTrue(receivedNetworkMessage.messageTypeEnum == MessageTypeEnum.GETHEADERCONTAININGTX);
+        Block deserializedBlock = Serialize.deserializeJsonToBlock(receivedNetworkMessage.rawMessage);
+        Assert.IsTrue(deserializedBlock.transactions.Length == 0); //block should only be a header block
+        Assert.IsTrue(deserializedBlock.merkleRoot == locallyCalculatedRoot);
+        
         //Note: The below two tests will be missing a sendingNode origin, which is useful to be included by a client if
         //it is also a node, and sending a next valid block. Remote node communication will have this field populated
         //however in a functional test, not here in these local integration tests.
