@@ -62,7 +62,7 @@ public class Block
 		if (block.transactions is null && (block.merkleRoot is null || block.merkleRoot == ""))
 			return null; //if the block has no transactions, it must contain a merkle root representing them
 		
-		if (overrideMerkle && block.transactions?.Length > 0)
+		if (overrideMerkle && block.transactions?.Length > 0 && merkleRootLocal is null)
 		{
 			//first ensure every transaction in the block has a matching txid
 			foreach (var tx in block.transactions)
