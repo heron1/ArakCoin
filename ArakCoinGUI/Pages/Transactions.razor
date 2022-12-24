@@ -31,12 +31,15 @@ else
             <hr />
         } 
     }
+    
+    <button @onclick=clearTransactions>Clear Transactions Tracking</button>
 }
 
 @code {
     bool finishedLoading = true; //every refresh, wait until all transactions are finished loading
     List<(Transaction tx, int confirmations)> transactions = new();
     int confirmationLimit = 11; //limit number of confirmations to track
+    bool txClearing = false;
 
     private void Callback(object? o, string update)
     {
@@ -58,15 +61,58 @@ else
     {
         lock (GuiGlobals.txLock)
         {
-           foreach (var tx in GuiGlobals.localTransactions)
-               {
-                   transactions.Add((tx, -1)); //-1 means the tx hasn't yet loaded its confirmations
-               } 
+            foreach (var tx in GuiGlobals.localTransactions)
+            {
+                transactions.Add((tx, -1)); //-1 means the tx hasn't yet loaded its confirmations
+            } 
+        }
+        
+        if (Settings.isNode) //load confirmations locally
+        {
+            for (var i = 0; i < transactions.Count; i++)
+            {
+                var tx = transactions[i];
+                var blockId = Globals.masterChain.getBlockIdFromTxId(tx.tx.id);
+                if (blockId is null)
+                {
+                    tx.confirmations = 0;
+                    transactions[i] = tx;
+                    continue;
+                }
+                var foundBlock = Globals.masterChain.getBlockByIndex((int)blockId);
+                int confirmations = 0;
+
+                while (foundBlock is not null && confirmations < confirmationLimit)
+                {
+                    foundBlock = Globals.masterChain.getBlockByIndex(foundBlock.index + 1);
+                    confirmations++;
+                }
+
+                tx.confirmations = confirmations;
+                transactions[i] = tx;
+            }
+            StateHasChanged();
         }
 
         Task.Run(updateConfirmationsForTxes);
         GlobalHandler.latestBlockUpdateEvent += Callback;
         GuiHandler.stateUpdate += Callback;
+    }
+
+    private void clearTransactions()
+    {
+        if (txClearing)
+            return;
+
+        txClearing = true;
+        
+        @lock (GuiGlobals.txLock)
+        {
+            transactions.Clear();
+            GuiGlobals.localTransactions.Clear();
+        }
+
+        txClearing = false;
     }
 
     private void updateConfirmationsForTxes()
@@ -133,7 +179,7 @@ else
             if (blockHeader != blockHeaders[0]) //node has switched the block
             {
                 tx.confirmations = 0;
-                // transactions[i] = tx;
+                transactions[i] = tx;
                 continue;
             }
 

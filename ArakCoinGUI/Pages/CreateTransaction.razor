@@ -33,7 +33,9 @@ else
         }
     }
     <button @onclick="addNewAddress">Add Another Address</button>
-	<button @onclick="handleTransactionBroadcast">Create & Broadcast Transaction</button>
+	<button @onclick="handleTransactionBroadcast" disabled="@(GuiGlobals.successfulTxBlock >= GuiGlobals.chainHeight)">
+		Create & Broadcast Transaction
+	</button>
 	<p><em>@status</em></p>
 }
 
@@ -48,16 +50,21 @@ else
         
 	private void Callback(object? o, string update)
 	{
+		status = GuiGlobals.successfulTxBlock >= GuiGlobals.chainHeight ? "(tx already broadcast for this block)" : "";
 		InvokeAsync(StateHasChanged);
 	}
 	private void Callback(object? o, Block newBlock)
 	{
+		status = GuiGlobals.successfulTxBlock >= GuiGlobals.chainHeight ? "(tx already broadcast for this block)" : "";
 		InvokeAsync(StateHasChanged);
 	}
     
 	protected override void OnInitialized()
 	{
 		addNewAddress();
+		
+		status = GuiGlobals.successfulTxBlock >= GuiGlobals.chainHeight ? 
+			"(tx already broadcast for this block)" : "";
 		
 		//we re-render both on block update events (useful for nodes), and also periodic checks (useful for clients)
 		GlobalHandler.latestBlockUpdateEvent += Callback;
@@ -167,6 +174,12 @@ else
 		    
 		    //keep track of this transaction locally within the GuiGlobals, to monitor its confirmations
 		    GuiGlobals.localTransactions.Add(tx);
+		    
+		    //keep track of the block the successful broadcast occurred in. Additional txes cannot be made in the same
+		    //block locally
+		    GuiGlobals.successfulTxBlock = GuiGlobals.chainHeight;
+		    status = GuiGlobals.successfulTxBlock >= GuiGlobals.chainHeight ? 
+			    "(tx already broadcast for this block)" : "";
 		    
 		    NavigationManager.NavigateTo("/createtransaction", forceLoad: true);
 	    }
