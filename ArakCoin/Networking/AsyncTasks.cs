@@ -53,7 +53,7 @@ public static class AsyncTasks
                             Globals.nextBlocks.Add(nextBlock);
                         }
                         if (!Blockchain.isGenesisBlock(nextBlock))
-                            nextBlock.mineBlock();
+                            nextBlock.mineBlock(Globals.masterChain);
                         Globals.nextMinedBlock = nextBlock;
                     }
                     else //handle logic for parallel mining
@@ -88,7 +88,7 @@ public static class AsyncTasks
                                 {
                                     Globals.nextBlocks.Add(parallelBlock);
                                 }
-                                parallelBlock.mineBlock();
+                                parallelBlock.mineBlock(Globals.masterChain);
                                 
                                 //the first thread to reach here must have been the one to mine its block first,
                                 //it can cancel the mining for all other threads

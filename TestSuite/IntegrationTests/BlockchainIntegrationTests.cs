@@ -26,7 +26,7 @@ public class BlockchainIntegration
 		Protocol.BLOCK_INTERVAL_SECONDS = 1;
 		Protocol.INITIALIZED_DIFFICULTY = 1;
 		
-		Protocol.BLOCK_REWARD = 20;
+		Protocol.INITIALIZED_BLOCK_REWARD = 20;
 		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
 		Settings.nodePublicKey = testPublicKey;
 		Settings.nodePrivateKey = testPrivateKey;
@@ -139,7 +139,7 @@ public class BlockchainIntegration
 
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			bchain.getLength() + 1, null);
+			bchain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
@@ -156,7 +156,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			bchain.getLength() + 1, null);
+			bchain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
@@ -187,7 +187,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			oldChain.getLength() + 1, null);
+			oldChain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
@@ -202,7 +202,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			oldChain.getLength() + 1, null);
+			oldChain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		oldBlockNext.transactions = new Transaction[] { coinbaseTx! };
 		while (!oldBlockNext.hashDifficultyMatch())
@@ -227,7 +227,7 @@ public class BlockchainIntegration
 		Block nextBlock = new Block(
 			bchain.getLength() + 2, null, Utilities.getTimestamp(),
 			bchain.getLastBlock().calculateBlockHash(), bchain.currentDifficulty, 1);
-		nextBlock.mineBlock();
+		nextBlock.mineBlock(bchain);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
@@ -237,7 +237,7 @@ public class BlockchainIntegration
 		nextBlock = new Block(
 			bchain.getLength(), null, Utilities.getTimestamp(),
 			bchain.getLastBlock().calculateBlockHash(), bchain.currentDifficulty, 1);
-		nextBlock.mineBlock();
+		nextBlock.mineBlock(bchain);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsFalse(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
@@ -249,7 +249,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			bchain.getLength() + 1, null);
+			bchain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
@@ -266,7 +266,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			bchain.getLength() + 1, null);
+			bchain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
@@ -282,7 +282,7 @@ public class BlockchainIntegration
 		
 		//manual mine here, as the .mineBlock method will modify the timestamp we're trying to test
 		coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			bchain.getLength() + 1, null);
+			bchain.getLength() + 1, null, bchain.currentBlockReward);
 		Assert.IsNotNull(coinbaseTx);
 		nextBlock.transactions = new Transaction[] { coinbaseTx! };
 		while (!nextBlock.hashDifficultyMatch())
@@ -304,7 +304,7 @@ public class BlockchainIntegration
 		// test invalid hash (from wrong block)
 		nextBlock = BlockFactory.createNewBlock(bchain, null);
 		nextBlock.prevBlockHash = bchain.getBlockByIndex(1).calculateBlockHash();
-		nextBlock.mineBlock();
+		nextBlock.mineBlock(bchain);
 		bchain.addValidBlock(nextBlock);
 		Assert.IsTrue(bchain.getLength() == 3);
 		Assert.IsTrue(bchain.getLastBlock().index == bchain.getLength());
@@ -341,7 +341,7 @@ public class BlockchainIntegration
 	{
 		LogTestMsg("Testing TestInvalidBlocksRejected..");
 		
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		Assert.IsTrue(Protocol.MAX_TRANSACTIONS_PER_BLOCK == 10);
 		
 		//create chain, mine some blocks, get some coins to use in our tests
@@ -368,7 +368,7 @@ public class BlockchainIntegration
 		//create a block with more transactions than allowed, and attempt to mine it.
 		//Mining itself should immediately fail
 		Block invalidBlock = BlockFactory.createNewBlock(bchain, bchain.mempool.ToArray());
-		Assert.IsFalse(invalidBlock.mineBlock());
+		Assert.IsFalse(invalidBlock.mineBlock(bchain));
 		
 		//nevertheless, we will manually mine it here (bypassing the checks in the mineBlock method)
 		while (!invalidBlock.hashDifficultyMatch())
@@ -376,7 +376,7 @@ public class BlockchainIntegration
 		invalidBlock.merkleRoot = MerkleFunctions.getMerkleRoot(invalidBlock.transactions);
 		Assert.IsTrue(invalidBlock.hashDifficultyMatch()); //block should have a hash matching blockchain difficulty
 		//should also contain a valid coinbase transaction
-		Assert.IsTrue(Transaction.isValidCoinbaseTransaction(invalidBlock.transactions[0], invalidBlock));
+		Assert.IsTrue(Transaction.isValidCoinbaseTransaction(invalidBlock.transactions[0], invalidBlock, bchain));
 		//however the block is not valid - it contains more txes than allowed per protocol settings
 		Assert.IsFalse(bchain.isNewBlockValid(invalidBlock));
 		Block lastBlock = bchain.getLastBlock();
@@ -685,7 +685,7 @@ public class BlockchainIntegration
 		Assert.IsFalse(easyBlock.hashDifficultyMatch());
 		var easyBlockMineTask = Task.Run(() =>
 		{
-			easyBlock.mineBlock();
+			easyBlock.mineBlock(bchain);
 		});
 		easyBlockMineTask.Wait(); //wait for block mine on the thread
 		Assert.IsTrue(easyBlock.hashDifficultyMatch()); //block should be successfully mined
@@ -695,7 +695,7 @@ public class BlockchainIntegration
 		Assert.IsFalse(veryDifficultBlock.hashDifficultyMatch());
 		var unreasonableBlockMineTask = Task.Run(() =>
 		{
-			veryDifficultBlock.mineBlock();
+			veryDifficultBlock.mineBlock(bchain);
 		});
 		while (veryDifficultBlock.nonce == 1)
 			Utilities.sleep(10); //wait for at least some mining to occur from the other thread
@@ -706,6 +706,25 @@ public class BlockchainIntegration
 		
 		//Our main test assertion follows - We can successfully interrupt block mining before it's complete:
 		Assert.IsFalse(veryDifficultBlock.hashDifficultyMatch());
+	}
+
+	[Test]
+	public void TestMaxCoinSupply()
+	{
+		// Test 1: Max supply should come to 79640 blocks based upon the input parameters (small test)
+		// first set the protocol block interval to a higher number to keep the difficulty at 0
+		Protocol.INITIALIZED_DIFFICULTY = 0; //make chain have no difficulty
+		Protocol.INITIALIZED_BLOCK_REWARD_HALVING = 205;
+		Protocol.DIFFICULTY_INTERVAL_BLOCKS = 20000;
+		Protocol.INITIALIZED_BLOCK_REWARD = 105;
+
+		Blockchain bchain = new Blockchain();
+		while (bchain.currentBlockReward > 0)
+		{
+			BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
+		}
+
+		Assert.IsTrue(Wallet.getCurrentCirculatingCoinSupply(bchain) == 79640);
 	}
 
 	

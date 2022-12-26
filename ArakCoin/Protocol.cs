@@ -23,15 +23,17 @@ public static class Protocol
 
     // starting difficulty of the blockchain
     public static int INITIALIZED_DIFFICULTY = 1;
-	
-    // block reward for the coinbase transaction/mining a new block TODO Advanced: Change this to scale to limit supply
-    public static int BLOCK_REWARD = 15;
+
+    // initial block reward per the protocol
+    public static int INITIALIZED_BLOCK_REWARD = 1000;
+
+    // A block reward halving should occur every this number of blocks. Initialized to 1 day at the genesis block
+    // assuming a 10 second block mine time on average (6 blocks per minute -> 8640 blocks per day)
+    public static int INITIALIZED_BLOCK_REWARD_HALVING = 8640;
 
     // the protocol public fee address where coins sent to are considered destroyed, but are permitted as miner reward
     public static string FEE_ADDRESS = "0";
 	
     // max transactions per block will limit the block size
-    public static int MAX_TRANSACTIONS_PER_BLOCK = 10;
-
-    
+    public static int MAX_TRANSACTIONS_PER_BLOCK = 100;
 }

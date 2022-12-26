@@ -119,8 +119,8 @@ public class Transaction
 	}
 	
 	//check whether the input transaction is the coinbase transaction
-	//for the given block, and meets protocol requirements. Returns true if valid, otherwise false
-	public static bool isValidCoinbaseTransaction(Transaction coinbaseTx, Block block)
+	//for the given block and chain, and meets protocol requirements. Returns true if valid, otherwise false
+	public static bool isValidCoinbaseTransaction(Transaction coinbaseTx, Block block, Blockchain blockchain)
 	{
 		//the block must contain at least one transaction
 		if (block.transactions.Length == 0)
@@ -140,7 +140,7 @@ public class Transaction
 	        return false;
 
         TxOut coinbaseTxOut = coinbaseTx.txOuts[0];
-        long correctReward = Protocol.BLOCK_REWARD; //initialize correctReward as the block reward
+        long correctReward = blockchain.currentBlockReward; //initialize correctReward as the block reward
         foreach (var tx in block.transactions.Skip(1)) //loop through normal (non-coinbase) transactions
         {
 	        //then add the miner fees from each normal transaction in the block

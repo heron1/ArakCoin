@@ -1,0 +1,18 @@
+﻿Assuming a 10 second average block mine time as per the protocol, then there will be 8640 blocks mined per day on average.
+Given INITIALIZED_BLOCK_REWARD = 1000 and INITIALIZED_BLOCK_REWARD_HALVING = 8640, then the coin distribution should be
+as follows:
+
+1st day -> 1000 block reward per block
+2nd day+ -> 500 block reward per block
+4th day+ -> 250 block reward per block
+8th day+ -> 125 block reward per block
+16th day+ -> 75 block reward per block
+32nd day+ -> 37 block reward per block
+64th day+ -> 18 block reward per block
+128th day+ -> 9 block reward per block
+256th day+ -> 4 block reward per block
+512th day+ -> 2 block reward per block
+1024th day+ -> 1 block reward per block
+2048th day+ -> 0 block reward per block (tx fee incentive alone)
+
+Max coin supply: 43717400 (4.3e7) coins based upon a 2048 day distribution

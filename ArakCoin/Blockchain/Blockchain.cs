@@ -14,6 +14,8 @@ public class Blockchain
 	public LinkedList<Block> blockchain = new LinkedList<Block>();
 	public int currentDifficulty = Protocol.INITIALIZED_DIFFICULTY;
 	public UTxOut[] uTxOuts = new UTxOut[]{}; //list of unspent tx outputs for this blockchain
+	public int currentBlockReward = Protocol.INITIALIZED_BLOCK_REWARD; //current block reward
+	public long currentBlockRewardHalving = Protocol.INITIALIZED_BLOCK_REWARD_HALVING; //current block halving reward
 
 	//local temporary state
 	public List<Transaction> mempool = new List<Transaction>();
@@ -50,6 +52,23 @@ public class Blockchain
 				node = node.Previous;
 
 			return node;
+		}
+	}
+	
+	/**
+	 * Checks whether the block reward should be updated, and if so, updates it
+	 */
+	private void updateBlockReward()
+	{
+		//if there is no block reward left, we exit
+		if (currentBlockReward == 0)
+			return;
+		
+		if (getLength() % currentBlockRewardHalving == 0)
+		{
+			//halving occurs
+			currentBlockRewardHalving *= 2;
+			currentBlockReward /= 2;
 		}
 	}
 
@@ -119,6 +138,8 @@ public class Blockchain
 			{
 				txToBlockMap[tx.id] = block.index;
 			}
+
+			updateBlockReward();
 
 			return true;
 		}
@@ -221,6 +242,8 @@ public class Blockchain
 		}
 	}
 
+	
+
 	/**
 	 * Iteratively searches the blockchain for the block with the given index. If not found, returns null
 	 */
@@ -286,7 +309,7 @@ public class Blockchain
 			return false;
 
 		//first ensure the first block transaction is a valid coinbase tx for this block
-		if (!Transaction.isValidCoinbaseTransaction(transactions[0], block))
+		if (!Transaction.isValidCoinbaseTransaction(transactions[0], block, this))
 			return false;
 		
 		//ensure no duplicate txIns
@@ -432,7 +455,7 @@ public class Blockchain
 				}
 
 				//assert total circulating coin supply is valid
-				long expectedSupply = (rebuildChain.getLength() - 1) * Protocol.BLOCK_REWARD;
+				long expectedSupply = (rebuildChain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD;
 				long actualSupply = Wallet.getCurrentCirculatingCoinSupply(rebuildChain);
 				if (expectedSupply != actualSupply)
 					return false;

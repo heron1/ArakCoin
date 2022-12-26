@@ -26,7 +26,7 @@ public static class BlockFactory
 
 		if (!Blockchain.isGenesisBlock(block))
 		{
-			block.mineBlock();
+			block.mineBlock(blockchain);
 		}
 
 		return block;

@@ -166,10 +166,11 @@ public static class TransactionFactory
     //coinbase miner reward, and also any fees from the listed transactions. Note this function does not perform any
     //validation - it is up to each blockchain node to validate the coinbase transaction as part of its
     //block validation process - the miner fees and coinbase reward must match exactly what's expected
-    public static Transaction? createCoinbaseTransaction(string rewardPublicKey, int blockId, Transaction[]? transactions)
+    public static Transaction? createCoinbaseTransaction(string rewardPublicKey, int blockId, 
+        Transaction[]? transactions, long currentReward)
     {
         //the total reward begins with the coinbase miner reward as per the protocol
-        long totalReward = Protocol.BLOCK_REWARD;
+        long totalReward = currentReward;
 
         if (transactions is not null)
         {

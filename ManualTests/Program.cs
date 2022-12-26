@@ -46,7 +46,7 @@ namespace ManualTests
             //Also assert blockchain is valid
             lock (Globals.masterChain.blockChainLock)
             {
-                long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.BLOCK_REWARD;
+                long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD;
                 long actualSupply = Wallet.getCurrentCirculatingCoinSupply(Globals.masterChain);
                 if (correctCoinSupply != actualSupply)
                 {

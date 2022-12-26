@@ -20,7 +20,7 @@ public class MerkleTreeIntegrationTests
         Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
 		
         //keep these protocol test parameters the same even if real protocol values change
-        Protocol.BLOCK_REWARD = 20;
+        Protocol.INITIALIZED_BLOCK_REWARD = 20;
         Settings.minMinerFee  = 0;
         Settings.maxMempoolSize = Protocol.MAX_TRANSACTIONS_PER_BLOCK * 2;
         Settings.nodePublicKey  = testPublicKey;

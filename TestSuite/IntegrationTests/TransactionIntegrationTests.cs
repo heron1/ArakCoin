@@ -24,7 +24,7 @@ public class TransactionIntegration
 		Protocol.MAX_TRANSACTIONS_PER_BLOCK = 10;
 		
 		//keep these protocol test parameters the same even if real protocol values change
-		Protocol.BLOCK_REWARD = 20;
+		Protocol.INITIALIZED_BLOCK_REWARD = 20;
 		Settings.minMinerFee  = 0;
 		Settings.maxMempoolSize = Protocol.MAX_TRANSACTIONS_PER_BLOCK * 2;
 		Settings.nodePublicKey  = testPublicKey;
@@ -37,7 +37,7 @@ public class TransactionIntegration
 		//Reminder: Every mined block will give a block reward to this node's public key. 
 		//Don't forget this when validating balances
 		Blockchain bchain = new Blockchain();
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 
 		//create genesis (no block reward) - assert no reward
 		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
@@ -46,7 +46,7 @@ public class TransactionIntegration
 		//create second block (block reward) - assert correct reward
 		BlockFactory.mineNextBlockAndAddToBlockchain(bchain);
 		Assert.IsTrue(Wallet.getAddressBalance(testPublicKey, bchain.uTxOuts) ==
-		              Protocol.BLOCK_REWARD);
+		              Protocol.INITIALIZED_BLOCK_REWARD);
 		
 		//add signed tx to mempool with no fee, mine - assert only block reward received
 		//Setup - give 5 coins to 2nd address, signed by this node's private key
@@ -145,7 +145,7 @@ public class TransactionIntegration
 
 		//We lastly must assert the total coin supply is equal to (blocks_mined - 1) * miner_reward
 		//(remember genesis block gives no reward)
-		long expectedSupply = (bchain.getLength() - 1) * Protocol.BLOCK_REWARD;
+		long expectedSupply = (bchain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD;
 		long actualSupply = Wallet.getCurrentCirculatingCoinSupply(bchain);
 		Assert.IsTrue(expectedSupply == actualSupply);
 		
@@ -158,7 +158,7 @@ public class TransactionIntegration
 	public void TestValidAndInvalidTransactions()
 	{
 		Blockchain bchain = new Blockchain();
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		
 		long add1Balance = Wallet.getAddressBalance(testPublicKey, bchain.uTxOuts);
 		long add2Balance = Wallet.getAddressBalance(testPublicKey2, bchain.uTxOuts);
@@ -305,7 +305,7 @@ public class TransactionIntegration
 		//to the total block mining rewards (the only source of coin creation)
 		long usedAddressBalance = add1Balance + add2Balance + add3Balance;
 		Assert.IsTrue(usedAddressBalance == Wallet.getCurrentCirculatingCoinSupply(bchain));
-		Assert.IsTrue(usedAddressBalance == (bchain.getLength() - 1) * Protocol.BLOCK_REWARD);
+		Assert.IsTrue(usedAddressBalance == (bchain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD);
 		
 	}
 	
@@ -313,7 +313,7 @@ public class TransactionIntegration
 	public void TestTransactionTampering()
 	{
 		Blockchain bchain = new Blockchain();
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		
 		long add1Balance = Wallet.getAddressBalance(testPublicKey, bchain.uTxOuts);
 		long add2Balance = Wallet.getAddressBalance(testPublicKey2, bchain.uTxOuts);
@@ -456,7 +456,7 @@ public class TransactionIntegration
 	public void TestTransactionsPerBlockLimit()
 	{
 		Blockchain bchain = new Blockchain();
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		Protocol.BLOCK_INTERVAL_SECONDS = 1; //we'll mine a few blocks so set the block interval low
 		Protocol.DIFFICULTY_INTERVAL_BLOCKS = Protocol.MAX_TRANSACTIONS_PER_BLOCK; //and prevent difficulty increases
 		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //genesis
@@ -501,7 +501,7 @@ public class TransactionIntegration
 	[Test]
 	public void TestAddMemPool()
 	{
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		Blockchain bchain = new Blockchain();
 		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //genesis
 		BlockFactory.mineNextBlockAndAddToBlockchain(bchain); //mine a block for a reward
@@ -544,7 +544,7 @@ public class TransactionIntegration
 	{
 		//for this test we set the node's max mempool size to 5, and assert that the 6th added transaction isn't added
 		Settings.maxMempoolSize = 5;
-		Assert.IsTrue(Protocol.BLOCK_REWARD == 20);
+		Assert.IsTrue(Protocol.INITIALIZED_BLOCK_REWARD == 20);
 		Blockchain bchain = new Blockchain();
 		//mine some blocks so we can create valid transactions from the rewards
 		for (int i = 0; i < 10; i++)
@@ -671,7 +671,7 @@ public class TransactionIntegration
 		//the array should have 4 members - 1 less to allow for the coinbase tx (remember max tx per block is 5 here)
 		Assert.IsTrue(txArrayForBlockMine.Length == 4);
 		Block nextBlock = BlockFactory.createAndMineNewBlock(bchain, txArrayForBlockMine);
-		nextBlock.mineBlock(); //mine the chunk of txes retrieved from the mempool
+		nextBlock.mineBlock(bchain); //mine the chunk of txes retrieved from the mempool
 		Assert.IsTrue(nextBlock.transactions.Length == 5); //block should have 5 txes, which includes the coinbase tx
 		//the original mempool should not have been mutated, test for this:
 		Assert.IsTrue(bchain.mempool.Count == 15);

@@ -54,7 +54,7 @@ public class NetworkingIntegrationTests
     public void Setup()
     {
         Settings.nodePublicKey  = testPublicKey;
-        Protocol.BLOCK_REWARD = 20;
+        Protocol.INITIALIZED_BLOCK_REWARD = 20;
         Settings.minMinerFee  = 0;
         Settings.echoCharLimit  = 1000;
         host = new Host(Settings.nodeIp, Settings.nodePort);

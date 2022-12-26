@@ -119,12 +119,13 @@ public class Block
 
 	/**
 	 * Mine this block until its hash matches its difficulty. A block mine can be cancelled by setting the block's
-	 * cancelMining property to true from another thread
+	 * cancelMining property to true from another thread. Note an input blockchain must be given so that the current
+	 * block reward can be deduced for the coinbase transaction
 	 *	 
 	 * Returns true once the block is mined, false otherwise. Coinbase transaction rewards are set to this node's
 	 * public key within the Settings file
 	 */
-	public bool mineBlock()
+	public bool mineBlock(Blockchain bchain)
 	{
 		//first set the cancelMining property to false in case it was previously set to true
 		cancelMining = false;
@@ -136,7 +137,7 @@ public class Block
 			transactions = transactions.Skip(1).ToArray(); //remove the current coinbase tx
 
 		Transaction? coinbaseTx = TransactionFactory.createCoinbaseTransaction(Settings.nodePublicKey,
-			index, transactions);
+			index, transactions, bchain.currentBlockReward);
 		if (coinbaseTx is null)
 		{
 			Utilities.exceptionLog($"Attempted to create coinbaseTx in block {index} but failed");
@@ -144,7 +145,7 @@ public class Block
 		}
 
 		transactions = ((new[] { coinbaseTx }).Concat(transactions)).ToArray();
-		if (!Transaction.isValidCoinbaseTransaction(coinbaseTx, this))
+		if (!Transaction.isValidCoinbaseTransaction(coinbaseTx, this, bchain))
 		{
 			Utilities.exceptionLog($"Created coinbase tx in block {index} but it failed validation");
 			return false;
