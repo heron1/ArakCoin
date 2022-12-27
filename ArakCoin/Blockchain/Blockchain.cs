@@ -241,9 +241,7 @@ public class Blockchain
 			}
 		}
 	}
-
 	
-
 	/**
 	 * Iteratively searches the blockchain for the block with the given index. If not found, returns null
 	 */

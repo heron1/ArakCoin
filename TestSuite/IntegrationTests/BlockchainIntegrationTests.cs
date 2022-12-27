@@ -727,6 +727,28 @@ public class BlockchainIntegration
 		Assert.IsTrue(Wallet.getCurrentCirculatingCoinSupply(bchain) == 79640);
 	}
 
+	[Test]
+	public void TestCalculateMaxCoinSupply()
+	{
+		//calculate the max reward using this method
+		//(total - rewardInitial should be the total coin supply, we subtract rewardInitial because the genesis block
+		//has no reward)
+		long prev_x = 0;
+		long blocks = 8640;
+		long rewardInitial = 1000;
+		long reward = rewardInitial;
+		long total = 0;
+		while (reward > 0)
+		{
+			total += blocks * reward - (prev_x * reward);
+			reward = (int)(reward / 2);
+			prev_x = blocks;
+			blocks *= 2;
+		}
+
+		Assert.IsTrue(total - rewardInitial == 43717400);
+	}
+
 	
 
 	/**

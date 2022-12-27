@@ -36,35 +36,39 @@ namespace ManualTests
         //(this method will need to be subscribed to a block update event)
         private static void testBlockHandler(Object? obj, Block latestBlock)
         {
-            Utilities.log("Current test address balances: ");
-            foreach (var key in publicKeys)
-            {
-                Utilities.log($"\t{key.Substring(0, 3)}..: {Wallet.getAddressBalance(key)} coins");
-            }
-
-            //assert the coin supply from utxouts matches the intended total block mining rewards
-            //Also assert blockchain is valid
-            lock (Globals.masterChain.blockChainLock)
-            {
-                long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD;
-                long actualSupply = Wallet.getCurrentCirculatingCoinSupply(Globals.masterChain);
-                if (correctCoinSupply != actualSupply)
-                {
-                    Utilities.exceptionLog("Groundbreaking error :'( -> coin supply should be" +
-                                           $" {correctCoinSupply} but is {actualSupply}");
-                    throw new Exception($"Groundbreaking error :'( -> coin supply should be" +
-                                        $" {correctCoinSupply} but is {actualSupply}");
-                }
-                else
-                {
-                    Utilities.log($"Correct coin supply asserted as: {actualSupply} (test passed)");
-                }
-
-                if (!Blockchain.isBlockchainValid(Globals.masterChain))
-                {
-                    throw new Exception($"Blockchain with height {Globals.masterChain.getLength()} is not valid");
-                }
-            }
+            //UPDATE -> The follow test has been commented out as it's no longer relevant. Coin supply can no 
+            //longer be asserted correctly by simply multiplying a fixed block reward by the chain height, as the
+            //block reward is now dynamic 
+            
+            // Utilities.log("Current test address balances: ");
+            // foreach (var key in publicKeys)
+            // {
+            //     Utilities.log($"\t{key.Substring(0, 3)}..: {Wallet.getAddressBalance(key)} coins");
+            // }
+            //
+            // //assert the coin supply from utxouts matches the intended total block mining rewards
+            // //Also assert blockchain is valid
+            // lock (Globals.masterChain.blockChainLock)
+            // {
+            //     long correctCoinSupply = (Globals.masterChain.getLength() - 1) * Protocol.INITIALIZED_BLOCK_REWARD;
+            //     long actualSupply = Wallet.getCurrentCirculatingCoinSupply(Globals.masterChain);
+            //     if (correctCoinSupply != actualSupply)
+            //     {
+            //         Utilities.exceptionLog("Groundbreaking error :'( -> coin supply should be" +
+            //                                $" {correctCoinSupply} but is {actualSupply}");
+            //         throw new Exception($"Groundbreaking error :'( -> coin supply should be" +
+            //                             $" {correctCoinSupply} but is {actualSupply}");
+            //     }
+            //     else
+            //     {
+            //         Utilities.log($"Correct coin supply asserted as: {actualSupply} (test passed)");
+            //     }
+            //
+            //     if (!Blockchain.isBlockchainValid(Globals.masterChain))
+            //     {
+            //         throw new Exception($"Blockchain with height {Globals.masterChain.getLength()} is not valid");
+            //     }
+            // }
         }
 
         /**
