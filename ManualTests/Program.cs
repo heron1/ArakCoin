@@ -1,8 +1,4 @@
-﻿//todo - ongoing refactoring of moving the manual tests from the TestSuite project into its own project
-//note: ManualTests in the TestSuite project should be refactored into terminating functional tests that do
-//assertions
-
-using ArakCoin;
+﻿using ArakCoin;
 using ArakCoin.Networking;
 using ArakCoin.Transactions;
 

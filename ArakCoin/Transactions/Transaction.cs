@@ -17,20 +17,6 @@ public class Transaction
 		this.isCoinbaseTx = isCoinbaseTx;
 	}
 
-	//todo -> Candidate for deletion? Especially after merkle tree implementation
-	public static string? convertTxArrayToString(Transaction[] transactions)
-	{
-		StringBuilder accumString = new StringBuilder();
-		foreach (Transaction t in transactions)
-		{
-			if (Transaction.getTxId(t) != t.id)
-				return null;
-			accumString.Append(t.id + ",");
-		}
-
-		return accumString.ToString();
-	}
-
 	public static string getTxId(Transaction transaction)
 	{
 		StringBuilder idAccumString = new StringBuilder();
