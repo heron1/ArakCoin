@@ -3,7 +3,7 @@ based blockchain written from scratch in C#.
 
 This is a solo project to serve as an educational tool for
 myself in making a blockchain. I make no guarantee as to its suitability in a real
-world environment. It's currently undergoing development.
+world environment.
 
 The current revision has a working command line interface that can be used
 on both Windows & Linux by hosts wishing to be either clients or nodes.
@@ -11,7 +11,6 @@ on both Windows & Linux by hosts wishing to be either clients or nodes.
 A GUI also exists for Windows 10+. It's recommended to use the pre-built binary for installation.
 
 # Binary Installation instructions (recommended)
-*Note*: For now, please compile from source (instructions in next section) for the most up to date build, as many changes are being pushed at the moment and the binaries will be outdated.
 
 Currently a command line UI exists for both Windows & Linux, and a GUI for Windows 10+.
 
