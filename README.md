@@ -1,10 +1,6 @@
 ﻿ArakCoin is intended to be a Proof of Work Peer-To-Peer distributed UTXO 
 based blockchain written from scratch in C#. 
 
-This is a solo project to serve as an educational tool for
-myself in making a blockchain. I make no guarantee as to its suitability in a real
-world environment.
-
 The current revision has a working command line interface that can be used
 on both Windows & Linux by hosts wishing to be either clients or nodes.
 
